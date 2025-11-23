@@ -2,399 +2,359 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Tints – Tools by GMG Color</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Opinion: Google Fonts chosen as clean, modern sans-serif close to GMG's feel -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <header class="site-header">
-    <div class="shell header-inner">
-      <a href="#" class="brand">
-        <div class="brand-mark">
-          <span class="brand-mark__symbol">t</span>
-        </div>
-        <div class="brand-text">
-          <span class="brand-text__title">tints</span>
-          <span class="brand-text__byline">by GMG Color</span>
-        </div>
-      </a>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BiggiTools – Smart Tools for Color & Print Nerds</title>
 
-      <nav class="main-nav">
-        <a href="#tools">Tools</a>
-        <a href="#use-cases">Use cases</a>
-        <a href="#developers">For developers</a>
-        <a href="#pricing">Pricing</a>
-        <a href="#about">About</a>
-        <a href="#support">Support</a>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+
+  <!-- Site Wrapper -->
+  <div class="flex-1 flex flex-col">
+
+    <!-- Nav -->
+    <header class="border-b border-slate-800/70 bg-slate-950/80 backdrop-blur">
+      <nav class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+        <!-- Logo / Brand -->
+        <a href="#" class="flex items-center gap-2">
+          <div class="h-8 w-8 rounded-xl bg-gradient-to-br from-cyan-400 to-emerald-400 flex items-center justify-center text-slate-950 font-black">
+            B
+          </div>
+          <div class="flex flex-col leading-tight">
+            <span class="font-semibold tracking-tight text-lg">BiggiTools</span>
+            <span class="text-xs text-slate-400 tracking-wide uppercase">Tiny tools. Big impact.</span>
+          </div>
+        </a>
+
+        <!-- Desktop Nav -->
+        <div class="hidden md:flex items-center gap-8 text-sm">
+          <a href="#tools" class="nav-link text-slate-200 hover:text-cyan-300 transition">Tools</a>
+          <a href="#about" class="nav-link text-slate-200 hover:text-cyan-300 transition">About</a>
+          <a href="#contact" class="nav-link text-slate-200 hover:text-cyan-300 transition">Contact</a>
+          <a href="#tools" class="inline-flex items-center gap-2 rounded-full border border-cyan-400/40 px-4 py-1.5 text-xs font-medium text-cyan-200 hover:bg-cyan-500 hover:text-slate-950 hover:border-cyan-500 transition">
+            View tools
+            <span aria-hidden="true">↗</span>
+          </a>
+        </div>
+
+        <!-- Mobile Menu Button -->
+        <button
+          id="mobile-menu-button"
+          class="md:hidden inline-flex items-center justify-center rounded-full border border-slate-700 p-2 hover:border-cyan-400 hover:text-cyan-300 transition"
+          aria-label="Toggle navigation menu"
+        >
+          <svg id="icon-menu" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+          <svg id="icon-close" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </nav>
 
-      <a href="#tools" class="btn btn--primary">Launch Tints hub</a>
-    </div>
-  </header>
-
-  <main>
-    <!-- HERO -->
-    <section class="hero">
-      <div class="shell hero-inner">
-        <div class="hero-copy">
-          <span class-name="badge badge--soft">New • GMG innovation lab</span>
-          <h1>Smart tools for smarter color workflows.</h1>
-          <p>
-            Tints is your sandbox for GMG-powered utilities – a place to explore, validate, 
-            and adopt focused tools that supercharge proofing, color conversion, and print production.
-          </p>
-          <div class="hero-actions">
-            <a href="#tools" class="btn btn--primary">Browse tools</a>
-            <a href="#contact" class="btn btn--ghost">Talk to us about an idea</a>
-          </div>
-          <ul class="hero-meta">
-            <li>Built on GMG core technology</li>
-            <li>Color-managed from day one</li>
-            <li>Designed for real production environments</li>
-          </ul>
+      <!-- Mobile Nav -->
+      <div id="mobile-menu" class="md:hidden max-h-0 overflow-hidden transition-[max-height] duration-300 ease-out border-t border-slate-800/70">
+        <div class="px-4 pb-4 pt-2 space-y-2 text-sm bg-slate-950">
+          <a href="#tools" class="block py-1 text-slate-200 hover:text-cyan-300">Tools</a>
+          <a href="#about" class="block py-1 text-slate-200 hover:text-cyan-300">About</a>
+          <a href="#contact" class="block py-1 text-slate-200 hover:text-cyan-300">Contact</a>
+          <a href="#tools" class="inline-flex mt-2 items-center gap-2 rounded-full border border-cyan-400/40 px-4 py-1.5 text-xs font-medium text-cyan-200 hover:bg-cyan-500 hover:text-slate-950 hover:border-cyan-500 transition">
+            View tools
+            <span aria-hidden="true">↗</span>
+          </a>
         </div>
+      </div>
+    </header>
 
-        <div class="hero-visual" aria-hidden="true">
-          <div class="hero-dashboard">
-            <div class="hero-dashboard__header">
-              <span class="dot dot--red"></span>
-              <span class="dot dot--amber"></span>
-              <span class="dot dot--green"></span>
+    <!-- Hero -->
+    <main class="flex-1">
+      <section class="relative overflow-hidden">
+        <div class="absolute inset-0 opacity-40 pointer-events-none bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.25),_transparent_55%),_radial-gradient(circle_at_bottom,_rgba(52,211,153,0.17),_transparent_55%)]"></div>
+
+        <div class="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
+          <div class="grid lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-12 items-center">
+            <!-- Hero content -->
+            <div>
+              <div class="inline-flex items-center gap-2 rounded-full border border-cyan-400/40 bg-slate-950/80 px-3 py-1 text-xs text-cyan-100 mb-5">
+                <span class="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                Experimental tools for print & color nerds
+              </div>
+
+              <h1 class="text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight text-slate-50">
+                Little browser tools,  
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-300">
+                  big productivity boosts.
+                </span>
+              </h1>
+
+              <p class="mt-4 max-w-xl text-sm sm:text-base text-slate-300">
+                BiggiTools is a tiny playground of web tools—mostly for color management, print,
+                and everyday tech chaos. Bookmark it, break it, send feedback, and come back later
+                for new experiments.
+              </p>
+
+              <div class="mt-6 flex flex-wrap gap-3">
+                <a
+                  href="#tools"
+                  class="inline-flex items-center justify-center rounded-full bg-cyan-500 px-5 py-2.5 text-sm font-medium text-slate-950 shadow-lg shadow-cyan-500/30 hover:bg-cyan-400 transition"
+                >
+                  Browse tools
+                </a>
+                <a
+                  href="#about"
+                  class="inline-flex items-center justify-center rounded-full border border-slate-700 px-5 py-2.5 text-sm font-medium text-slate-100 hover:border-cyan-400 hover:text-cyan-200 transition"
+                >
+                  What is this?
+                </a>
+              </div>
+
+              <div class="mt-6 flex flex-wrap gap-4 text-xs text-slate-400">
+                <div class="flex items-center gap-2">
+                  <span class="h-4 w-4 rounded-full bg-slate-800 flex items-center justify-center text-[10px]">⚙</span>
+                  No install. Just browser.
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="h-4 w-4 rounded-full bg-slate-800 flex items-center justify-center text-[10px]">🧪</span>
+                  Some tools still experimental.
+                </div>
+              </div>
             </div>
-            <div class="hero-dashboard__content">
-              <div class="hero-grid">
-                <article class="hero-tool hero-tool--quality">
-                  <h3>QualityCheck</h3>
-                  <p>Visualize print targets, measure patches, and spot drift in seconds.</p>
-                  <span class="pill pill--tier-free">Free tier</span>
-                </article>
 
-                <article class="hero-tool hero-tool--quickfix">
-                  <h3>QuickFix</h3>
-                  <p>Last-minute adjustments to the final print file, without breaking color.</p>
-                  <span class="pill pill--tier-base">Included in base</span>
-                </article>
+            <!-- Hero “app wall” style panel -->
+            <div class="lg:justify-self-end w-full max-w-md mx-auto">
+              <div class="rounded-3xl border border-slate-800/80 bg-slate-900/70 backdrop-blur p-5 shadow-2xl shadow-cyan-500/10">
+                <div class="flex items-center justify-between mb-4 text-xs text-slate-400">
+                  <span>Tool overview</span>
+                  <span class="inline-flex items-center gap-1">
+                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                    Online
+                  </span>
+                </div>
 
-                <article class="hero-tool hero-tool--connect">
-                  <h3>SeamlessConnect</h3>
-                  <p>API bridges between GMG, MIS, RIPs, and custom workflows.</p>
-                  <span class="pill pill--tier-premium">Premium add-on</span>
-                </article>
+                <div class="grid grid-cols-2 gap-3">
+                  <!-- Mini tiles - these link to the cards below -->
+                  <a href="#tools" class="tool-mini-tile group">
+                    <div class="tool-mini-icon bg-gradient-to-br from-cyan-400/90 to-sky-400/90"></div>
+                    <div class="tool-mini-text">
+                      <span class="tool-mini-title">CGATS Viewer</span>
+                      <span class="tool-mini-sub">Test chart inspector</span>
+                    </div>
+                  </a>
+                  <a href="#tools" class="tool-mini-tile group">
+                    <div class="tool-mini-icon bg-gradient-to-br from-emerald-400/90 to-teal-400/90"></div>
+                    <div class="tool-mini-text">
+                      <span class="tool-mini-title">Pixel Counter</span>
+                      <span class="tool-mini-sub">Image stats</span>
+                    </div>
+                  </a>
+                  <a href="#tools" class="tool-mini-tile group">
+                    <div class="tool-mini-icon bg-gradient-to-br from-fuchsia-400/90 to-rose-400/90"></div>
+                    <div class="tool-mini-text">
+                      <span class="tool-mini-title">DeltaE Heatmap</span>
+                      <span class="tool-mini-sub">Color difference</span>
+                    </div>
+                  </a>
+                  <a href="#tools" class="tool-mini-tile group">
+                    <div class="tool-mini-icon bg-gradient-to-br from-amber-400/90 to-orange-400/90"></div>
+                    <div class="tool-mini-text">
+                      <span class="tool-mini-title">More soon</span>
+                      <span class="tool-mini-sub">Work in progress</span>
+                    </div>
+                  </a>
+                </div>
 
-                <article class="hero-tool hero-tool--smartflow">
-                  <h3>SmartFlow</h3>
-                  <p>Automated task flows with color-aware logic and routing.</p>
-                  <span class="pill pill--tier-base">Included in base</span>
-                </article>
+                <p class="mt-4 text-[11px] text-slate-500">
+                  Links are placeholders for now. Hook each card up to your real tools (GitHub Pages, other URLs, etc.).
+                </p>
               </div>
             </div>
           </div>
-
-          <div class="hero-legend">
-            <span class="legend-item">
-              <span class="legend-swatch legend-swatch--free"></span>
-              <span>Light tint = Free</span>
-            </span>
-            <span class="legend-item">
-              <span class="legend-swatch legend-swatch--base"></span>
-              <span>Medium tint = Base subscription</span>
-            </span>
-            <span class="legend-item">
-              <span class="legend-swatch legend-swatch--premium"></span>
-              <span>Deep tint = Premium add-on</span>
-            </span>
-          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- GMG CONTINUITY STRIP -->
-    <section class="gmg-strip">
-      <div class="shell gmg-strip-inner">
-        <div class="gmg-strip-text">
-          <span class="gmg-strip-kicker">Powered by GMG Color</span>
-          <p>
-            For over 40 years, GMG has set the standard in color management and proofing software.
-          </p>
-        </div>
-        <a href="https://gmgcolor.com" class="gmg-strip-link" target="_blank" rel="noreferrer">
-          Learn more about GMG Color
-        </a>
-      </div>
-    </section>
-
-    <!-- TOOLS GRID -->
-    <section id="tools" class="section tools-section">
-      <div class="shell">
-        <header class="section-header">
-          <h2>Explore Tints tools</h2>
-          <p>
-            Focused utilities grouped by category – all backed by GMG color science, 
-            with clear pricing tiers represented by tint intensity.
-          </p>
-        </header>
-
-        <div class="tools-grid">
-          <!-- QUALITYCHECK CATEGORY -->
-          <article class="tool-card tool-card--quality">
-            <header class="tool-card__header">
-              <span class="tool-category">QualityCheck</span>
-              <span class="tool-tag">Prepress • QC</span>
-            </header>
-            <p class="tool-card__body">
-              Load charts and production samples, visualize deviations, and review ∆E heatmaps
-              before they become production problems.
-            </p>
-            <div class="tool-tiers">
-              <span class="tier-chip tier-chip--free">Free: basic chart viewer</span>
-              <span class="tier-chip tier-chip--base">Base: automated reporting</span>
-              <span class="tier-chip tier-chip--premium">Premium: live device monitoring</span>
-            </div>
-            <footer class="tool-card__footer">
-              <button class="btn btn--ghost-sm">View details</button>
-              <button class="btn btn--primary-sm">Launch tool</button>
-            </footer>
-          </article>
-
-          <!-- QUICKFIX CATEGORY -->
-          <article class="tool-card tool-card--quickfix">
-            <header class="tool-card__header">
-              <span class="tool-category">QuickFix</span>
-              <span class="tool-tag">Production • Last mile</span>
-            </header>
-            <p class="tool-card__body">
-              Make controlled, color-managed tweaks to output files when press reality doesn't 
-              perfectly match the reference – without rebuilding the whole workflow.
-            </p>
-            <div class="tool-tiers">
-              <span class="tier-chip tier-chip--base">Base: single-job tweaks</span>
-              <span class="tier-chip tier-chip--premium">Premium: presets & automation</span>
-            </div>
-            <footer class="tool-card__footer">
-              <button class="btn btn--ghost-sm">View details</button>
-              <button class="btn btn--primary-sm">Launch tool</button>
-            </footer>
-          </article>
-
-          <!-- SEAMLESSCONNECT CATEGORY -->
-          <article class="tool-card tool-card--connect">
-            <header class="tool-card__header">
-              <span class="tool-category">SeamlessConnect</span>
-              <span class="tool-tag">Integration • APIs</span>
-            </header>
-            <p class="tool-card__body">
-              Connect GMG solutions with RIPs, MIS, web portals, and custom scripts. Designed for 
-              IT, dev teams, and power users who need reliable, documented hooks.
-            </p>
-            <div class="tool-tiers">
-              <span class="tier-chip tier-chip--free">Free: sandbox & examples</span>
-              <span class="tier-chip tier-chip--base">Base: standard connectors</span>
-              <span class="tier-chip tier-chip--premium">Premium: custom endpoints</span>
-            </div>
-            <footer class="tool-card__footer">
-              <button class="btn btn--ghost-sm">View docs</button>
-              <button class="btn btn--primary-sm">Open developer hub</button>
-            </footer>
-          </article>
-
-          <!-- SMARTFLOW CATEGORY -->
-          <article class="tool-card tool-card--smartflow">
-            <header class="tool-card__header">
-              <span class="tool-category">SmartFlow</span>
-              <span class="tool-tag">Automation • Orchestration</span>
-            </header>
-            <p class="tool-card__body">
-              String together checks, conversions, notifications, and approvals into repeatable, 
-              color-aware flows across your existing systems.
-            </p>
-            <div class="tool-tiers">
-              <span class="tier-chip tier-chip--base">Base: rule-based flows</span>
-              <span class="tier-chip tier-chip--premium">Premium: advanced conditions</span>
-            </div>
-            <footer class="tool-card__footer">
-              <button class="btn btn--ghost-sm">View details</button>
-              <button class="btn btn--primary-sm">Launch designer</button>
-            </footer>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- USE CASES -->
-    <section id="use-cases" class="section section--alt">
-      <div class="shell">
-        <header class="section-header">
-          <h2>Where Tints fits in your print reality</h2>
-          <p>
-            Designed for packaging, labels, and commercial print environments where color accuracy 
-            meets time pressure every single day.
-          </p>
-        </header>
-
-        <div class="use-cases">
-          <article class="use-case">
-            <h3>Validate ideas before productizing</h3>
-            <p>
-              Run an experiment with a small group of customers in Tints before rolling a feature 
-              into your main GMG setup.
-            </p>
-          </article>
-          <article class="use-case">
-            <h3>Plug gaps in your current workflow</h3>
-            <p>
-              Use focused tools instead of building fragile one-off scripts that are hard to maintain.
-            </p>
-          </article>
-          <article class="use-case">
-            <h3>Pilot new services with low risk</h3>
-            <p>
-              Offer new QC or automation services to select customers using Tints, then scale what works.
-            </p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- DEVELOPERS -->
-    <section id="developers" class="section dev-section">
-      <div class="shell dev-inner">
-        <div class="dev-copy">
-          <h2>Built for integrators and developers</h2>
-          <p>
-            Tints exposes GMG capabilities through modern APIs and SDK-style endpoints – ideal for 
-            building your own dashboards, portals, and automation.
-          </p>
-          <ul class="dev-list">
-            <li>REST-style endpoints with predictable JSON schemas</li>
-            <li>Sample scripts for common DFE / RIP integrations</li>
-            <li>API keys aligned with your GMG subscription</li>
-            <li>Clear versioning so experiments don’t break production</li>
-          </ul>
-        </div>
-        <div class="dev-code" aria-hidden="true">
-          <div class="dev-code-header">
-            <span class="pill pill--code">Sample: create QC job</span>
-          </div>
-          <pre><code class="code-block">
-POST /api/tints/qualitycheck/jobs
-Authorization: Bearer &lt;token&gt;
-
-{
-  "jobId": "JOB-12345",
-  "input": "s3://bucket/sample-chart.txt",
-  "reference": "s3://bucket/reference-chart.txt",
-  "metrics": ["dE00", "average", "max"],
-  "notify": ["prepress@example.com"]
-}
-          </code></pre>
-        </div>
-      </div>
-    </section>
-
-    <!-- PRICING LEGEND -->
-    <section id="pricing" class="section">
-      <div class="shell">
-        <header class="section-header">
-          <h2>Pricing at a glance</h2>
-          <p>
-            Tint intensity is consistent across all categories, so you always know where a tool sits 
-            in the pricing model.
-          </p>
-        </header>
-
-        <div class="pricing-legend">
-          <div class="pricing-legend-item">
-            <div class="pricing-legend-chip pricing-legend-chip--free"></div>
+      <!-- Tools / Product Cards -->
+      <section id="tools" class="border-t border-slate-800/70 bg-slate-950">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
+          <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8">
             <div>
-              <h3>Free</h3>
-              <p>Entry-level tools or limited modes for exploration and internal pilots.</p>
+              <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-50">Tools</h2>
+              <p class="mt-2 text-sm text-slate-300 max-w-xl">
+                Each card can link to a standalone tool (or GitHub Pages project). Replace the URLs and
+                descriptions once your tools are live.
+              </p>
+            </div>
+            <div class="text-xs text-slate-500">
+              Tip: keep tools fast, focused, and slightly opinionated. That’s the fun part.
             </div>
           </div>
-          <div class="pricing-legend-item">
-            <div class="pricing-legend-chip pricing-legend-chip--base"></div>
+
+          <!-- Cards grid -->
+          <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+
+            <!-- Tool card 1 -->
+            <a
+              href="tools/cgats-viewer/index.html"  <!-- TODO: update to your actual URL -->
+              class="tool-card group"
+            >
+              <div class="tool-card-header bg-gradient-to-br from-cyan-500/90 via-sky-500/90 to-emerald-400/90">
+                <span class="tool-card-icon">🎯</span>
+              </div>
+              <div class="tool-card-body">
+                <div class="flex items-center justify-between gap-2">
+                  <h3 class="tool-card-title">CGATS Chart Viewer</h3>
+                  <span class="tool-tag beta">Beta</span>
+                </div>
+                <p class="tool-card-text">
+                  Visualize test charts, inspect patches, and debug color measurement files without launching a full app.
+                </p>
+                <div class="tool-card-footer">
+                  <span>Open tool</span>
+                  <span class="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">↗</span>
+                </div>
+              </div>
+            </a>
+
+            <!-- Tool card 2 -->
+            <a
+              href="tools/pixel-counter/index.html"  <!-- TODO: update to your actual URL -->
+              class="tool-card group"
+            >
+              <div class="tool-card-header bg-gradient-to-br from-emerald-400/90 via-teal-400/90 to-cyan-400/90">
+                <span class="tool-card-icon">📊</span>
+              </div>
+              <div class="tool-card-body">
+                <div class="flex items-center justify-between gap-2">
+                  <h3 class="tool-card-title">Pixel Counter</h3>
+                  <span class="tool-tag free">Free</span>
+                </div>
+                <p class="tool-card-text">
+                  Drop in an image and get a breakdown of pixel counts by CMYK (or RGB) values for nerdy print diagnostics.
+                </p>
+                <div class="tool-card-footer">
+                  <span>Open tool</span>
+                  <span class="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">↗</span>
+                </div>
+              </div>
+            </a>
+
+            <!-- Tool card 3 -->
+            <a
+              href="tools/deltae-heatmap/index.html"  <!-- TODO: update to your actual URL -->
+              class="tool-card group"
+            >
+              <div class="tool-card-header bg-gradient-to-br from-fuchsia-500/90 via-violet-500/90 to-sky-400/90">
+                <span class="tool-card-icon">🌡</span>
+              </div>
+              <div class="tool-card-body">
+                <div class="flex items-center justify-between gap-2">
+                  <h3 class="tool-card-title">∆E Heatmap</h3>
+                  <span class="tool-tag pro">Pro-ish</span>
+                </div>
+                <p class="tool-card-text">
+                  Compare reference vs. sample and see DeltaE visualized as a heatmap directly in your browser.
+                </p>
+                <div class="tool-card-footer">
+                  <span>Open tool</span>
+                  <span class="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">↗</span>
+                </div>
+              </div>
+            </a>
+
+            <!-- Tool card 4 – placeholder -->
+            <a
+              href="#"
+              class="tool-card group opacity-75 hover:opacity-100"
+            >
+              <div class="tool-card-header bg-gradient-to-br from-slate-500/90 via-slate-600/90 to-slate-800/90">
+                <span class="tool-card-icon">🧪</span>
+              </div>
+              <div class="tool-card-body">
+                <div class="flex items-center justify-between gap-2">
+                  <h3 class="tool-card-title">Next experiment</h3>
+                  <span class="tool-tag wip">WIP</span>
+                </div>
+                <p class="tool-card-text">
+                  Placeholder for the next weird little utility you come up with. Rename and hook it up later.
+                </p>
+                <div class="tool-card-footer">
+                  <span>Coming soon</span>
+                </div>
+              </div>
+            </a>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- About -->
+      <section id="about" class="border-t border-slate-800/70 bg-slate-950">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16 grid gap-10 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+          <div>
+            <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-50">What is BiggiTools?</h2>
+            <p class="mt-3 text-sm sm:text-base text-slate-300 max-w-2xl">
+              A small, unofficial lab of browser-based tools—mostly around color management, printing,
+              and everyday workflow headaches. Think of it as a sandbox where ideas show up before they
+              become “real products”.
+            </p>
+            <p class="mt-3 text-sm sm:text-base text-slate-300 max-w-2xl">
+              Tools might be rough around the edges, but the goal is always the same: save a few minutes
+              here and a few clicks there for people who live in prepress, print, and color land.
+            </p>
+          </div>
+          <div class="rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-4 sm:px-5 sm:py-5 text-xs text-slate-300">
+            <h3 class="text-sm font-medium mb-2">Roadmap-ish</h3>
+            <ul class="space-y-1.5 list-disc list-inside">
+              <li>More color tools (charts, conversions, QC helpers)</li>
+              <li>Quality-of-life utilities for support & troubleshooting</li>
+              <li>Better documentation & examples once things stabilize</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Contact / Footer -->
+      <section id="contact" class="border-t border-slate-800/70 bg-slate-950">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
             <div>
-              <h3>Base subscription</h3>
-              <p>Core capabilities for day-to-day use across your team or site.</p>
+              <h2 class="text-xl font-semibold text-slate-50">Feedback, bugs, ideas?</h2>
+              <p class="mt-2 text-sm text-slate-300">
+                Found a bug, want a feature, or have an idea for a new micro-tool?
+                Reach out and let me know what would help you in your daily chaos.
+              </p>
+            </div>
+            <div class="text-sm text-slate-300">
+              <!-- Replace this with a real email/contact method -->
+              <a href="mailto:you@example.com" class="inline-flex items-center gap-2 rounded-full border border-slate-700 px-4 py-2 hover:border-cyan-400 hover:text-cyan-200 transition">
+                Email Biggi
+                <span aria-hidden="true">✉️</span>
+              </a>
+              <p class="mt-1 text-xs text-slate-500">
+                Replace this email with your real contact or a form later.
+              </p>
             </div>
           </div>
-          <div class="pricing-legend-item">
-            <div class="pricing-legend-chip pricing-legend-chip--premium"></div>
-            <div>
-              <h3>Premium add-ons</h3>
-              <p>Advanced automation, integrations, or analytics for heavy users.</p>
-            </div>
-          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </main>
 
-    <!-- ABOUT / SUPPORT -->
-    <section id="about" class="section section--alt">
-      <div class="shell about-grid">
-        <div>
-          <h2>About Tints</h2>
-          <p>
-            Tints is the experimental tools and integration hub from GMG Color, focused on 
-            solving specific workflow problems quickly – and turning the best ideas into 
-            long-term solutions.
-          </p>
-        </div>
-        <div id="support">
-          <h2>Support & feedback</h2>
-          <p>
-            Have an idea for a tool, or feedback from production? We want to hear from you.
-          </p>
-          <ul class="support-list">
-            <li>Share use cases from real print jobs</li>
-            <li>Join private betas for upcoming tools</li>
-            <li>Co-develop solutions with GMG experts</li>
-          </ul>
-        </div>
+    <!-- Tiny footer -->
+    <footer class="border-t border-slate-800/70 bg-slate-950">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row gap-2 items-center justify-between text-xs text-slate-500">
+        <span>© <span id="year"></span> BiggiTools. Built as a personal playground.</span>
+        <span class="flex items-center gap-2">
+          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+          Running as static HTML on GitHub Pages.
+        </span>
       </div>
-    </section>
+    </footer>
+  </div>
 
-    <!-- CONTACT -->
-    <section id="contact" class="section contact-section">
-      <div class="shell contact-inner">
-        <div>
-          <h2>Bring your next idea to the Tints lab</h2>
-          <p>
-            Tell us about your workflow challenge or experiment. We’ll help you evaluate whether 
-            it fits into Tints – or into a GMG product roadmap.
-          </p>
-        </div>
-        <form class="contact-form">
-          <div class="field">
-            <label for="name">Name</label>
-            <input id="name" type="text" placeholder="Your name" />
-          </div>
-          <div class="field">
-            <label for="email">Email</label>
-            <input id="email" type="email" placeholder="you@example.com" />
-          </div>
-          <div class="field">
-            <label for="message">Your idea or challenge</label>
-            <textarea id="message" rows="4" placeholder="Describe the workflow, devices, and what success looks like."></textarea>
-          </div>
-          <button type="submit" class="btn btn--primary">Submit</button>
-        </form>
-      </div>
-    </section>
-  </main>
-
-  <footer class="site-footer">
-    <div class="shell footer-inner">
-      <span>© GMG Color – Tints tools lab</span>
-      <nav class="footer-nav">
-        <a href="#">Imprint</a>
-        <a href="#">Privacy</a>
-        <a href="#">Terms</a>
-      </nav>
-    </div>
-  </footer>
+  <!-- Custom JS -->
+  <script src="script.js"></script>
 </body>
 </html>
