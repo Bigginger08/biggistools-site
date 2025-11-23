@@ -1,73 +1,310 @@
-/* Custom “design tokens” / helper classes for BiggiTools
-   Most layout & styling is done with Tailwind; this is just sugar.
+/* BiggiTools custom styles
+   Tailwind (CDN) does most of the heavy lifting.
+   This file just adds product-card vibes.
 */
 
+/* ---------- Tool cards ---------- */
+
 .tool-card {
-  @apply relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 shadow-md shadow-black/30 hover:shadow-xl hover:shadow-cyan-500/20 transition-transform transition-shadow duration-200 hover:-translate-y-1 flex flex-col;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: 1.25rem;          /* ~rounded-2xl */
+  border: 1px solid rgba(30, 64, 175, 0.2); /* slightly bluish border */
+  background:
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.06), transparent 60%),
+    radial-gradient(circle at bottom right, rgba(45, 212, 191, 0.05), transparent 60%),
+    #020617;                       /* slate-950-ish */
+  overflow: hidden;
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(15, 23, 42, 0.9);
+  transition:
+    transform 150ms ease-out,
+    box-shadow 150ms ease-out,
+    border-color 150ms ease-out,
+    background 150ms ease-out;
 }
 
-.tool-card-header {
-  @apply h-24 flex items-end justify-between p-4;
+.tool-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(56, 189, 248, 0.5);
+  box-shadow:
+    0 18px 45px rgba(8, 47, 73, 0.8),
+    0 0 0 1px rgba(15, 23, 42, 0.9);
 }
 
-.tool-card-icon {
-  @apply text-2xl bg-slate-950/20 rounded-xl p-2;
+/* ---------- Media strip (top) ---------- */
+
+.tool-card-media {
+  position: relative;
+  padding: 0.9rem 1rem 0.9rem;
+  height: 140px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  color: #0b1220; /* slate-950-ish for the icon/pill text */
 }
+
+/* default gradient, overridden by modifiers */
+.tool-card-media::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(15, 23, 42, 0.15), transparent 60%),
+    radial-gradient(circle at 90% 100%, rgba(15, 23, 42, 0.18), transparent 60%);
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* cyan / blue */
+.tool-card-media--cyan {
+  background: linear-gradient(135deg, #22d3ee, #38bdf8, #2dd4bf);
+}
+
+/* emerald / teal */
+.tool-card-media--emerald {
+  background: linear-gradient(135deg, #34d399, #22c55e, #06b6d4);
+}
+
+/* magenta / violet */
+.tool-card-media--magenta {
+  background: linear-gradient(135deg, #e879f9, #a855f7, #38bdf8);
+}
+
+/* neutral placeholder */
+.tool-card-media--neutral {
+  background: linear-gradient(135deg, #64748b, #475569, #0f172a);
+  color: #e5e7eb;
+}
+
+.tool-card-media-pill {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: rgba(15, 23, 42, 0.24);
+  color: rgba(248, 250, 252, 0.9); /* slate-50-ish */
+  backdrop-filter: blur(10px);
+}
+
+.tool-card-media-label {
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+}
+
+.tool-card-media-icon {
+  position: relative;
+  z-index: 1;
+  align-self: flex-start;
+  font-size: 1.8rem;
+  line-height: 1;
+  padding: 0.5rem;
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.16);
+  box-shadow:
+    0 10px 25px rgba(15, 23, 42, 0.5),
+    0 0 0 1px rgba(15, 23, 42, 0.2);
+}
+
+.tool-card-media-bottom {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ---------- Badges ---------- */
+
+.tool-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-width: 1px;
+  border-style: solid;
+}
+
+.tool-badge--beta {
+  color: #e0f2fe;
+  border-color: rgba(56, 189, 248, 0.8);
+  background: rgba(8, 47, 73, 0.5);
+}
+
+.tool-badge--free {
+  color: #dcfce7;
+  border-color: rgba(34, 197, 94, 0.85);
+  background: rgba(5, 46, 22, 0.6);
+}
+
+.tool-badge--pro {
+  color: #fae8ff;
+  border-color: rgba(217, 70, 239, 0.85);
+  background: rgba(88, 28, 135, 0.7);
+}
+
+.tool-badge--wip {
+  color: #e5e7eb;
+  border-color: rgba(148, 163, 184, 0.75);
+  background: rgba(30, 41, 59, 0.9);
+}
+
+/* ---------- Card body ---------- */
 
 .tool-card-body {
-  @apply p-4 flex-1 flex flex-col gap-3;
+  padding: 1rem 1.1rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  color: #e5e7eb;
 }
 
 .tool-card-title {
-  @apply font-semibold text-slate-50 text-sm;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #f9fafb; /* near white */
 }
 
 .tool-card-text {
-  @apply text-xs text-slate-300 leading-relaxed;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: #cbd5f5; /* very light slate / bluish */
 }
 
-.tool-card-footer {
-  @apply mt-auto flex items-center justify-between text-xs text-cyan-300;
+.tool-card-meta {
+  margin-top: 0.25rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.7rem;
+  color: #94a3b8;
 }
 
-.tool-tag {
-  @apply inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide border;
+/* ---------- Actions row ---------- */
+
+.tool-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1.1rem 1.1rem;
 }
 
-.tool-tag.free {
-  @apply border-emerald-400/60 text-emerald-300 bg-emerald-400/10;
+/* Primary button – the actual link to the tool */
+
+.tool-button-primary {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: #020617; /* dark text */
+  background: linear-gradient(135deg, #22d3ee, #38bdf8, #2dd4bf);
+  border: none;
+  box-shadow:
+    0 10px 25px rgba(8, 47, 73, 0.8),
+    0 0 0 1px rgba(15, 23, 42, 0.8);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    transform 150ms ease-out,
+    box-shadow 150ms ease-out,
+    filter 150ms ease-out;
 }
 
-.tool-tag.beta {
-  @apply border-cyan-400/60 text-cyan-200 bg-cyan-400/10;
+.tool-button-primary span {
+  transform: translateY(-0.5px);
 }
 
-.tool-tag.pro {
-  @apply border-fuchsia-400/60 text-fuchsia-200 bg-fuchsia-400/10;
+.tool-button-primary:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+  box-shadow:
+    0 16px 35px rgba(8, 47, 73, 0.9),
+    0 0 0 1px rgba(15, 23, 42, 0.9);
 }
 
-.tool-tag.wip {
-  @apply border-slate-500/60 text-slate-300 bg-slate-700/30;
+.tool-button-primary:active {
+  transform: translateY(0);
+  filter: brightness(0.97);
 }
 
-/* Hero mini tiles */
+/* Ghost-style primary button for "coming soon" */
 
-.tool-mini-tile {
-  @apply flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-950/60 px-3 py-2 hover:border-cyan-400/70 hover:bg-slate-900/80 transition;
+.tool-button-primary--ghost {
+  background: transparent;
+  color: #e5e7eb;
+  border-radius: 999px;
+  border: 1px dashed rgba(148, 163, 184, 0.9);
+  box-shadow: none;
+  cursor: default;
 }
 
-.tool-mini-icon {
-  @apply h-8 w-8 rounded-xl flex items-center justify-center shadow-md shadow-black/40;
+/* Secondary text link (docs, etc.) */
+
+.tool-link-secondary {
+  flex: 0 0 auto;
+  border: none;
+  background: none;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline transparent;
+  text-underline-offset: 2px;
+  transition: color 150ms ease-out, text-decoration-color 150ms ease-out;
+  white-space: nowrap;
 }
 
-.tool-mini-text {
-  @apply flex flex-col;
+.tool-link-secondary:hover:not(:disabled) {
+  color: #e2e8f0;
+  text-decoration-color: rgba(148, 163, 184, 0.7);
 }
 
-.tool-mini-title {
-  @apply text-xs font-medium text-slate-50;
+.tool-link-secondary:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
-.tool-mini-sub {
-  @apply text-[10px] text-slate-400;
+/* ---------- Small-screen tweaks ---------- */
+
+@media (max-width: 640px) {
+  .tool-card-media {
+    height: 120px;
+  }
+
+  .tool-card-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tool-button-primary,
+  .tool-button-primary--ghost {
+    width: 100%;
+  }
+
+  .tool-link-secondary {
+    justify-content: center;
+    text-align: center;
+  }
 }

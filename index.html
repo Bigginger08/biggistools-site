@@ -9,7 +9,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
 
   <!-- Custom CSS -->
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
 
@@ -140,8 +140,8 @@
                   <a href="#tools" class="tool-mini-tile group">
                     <div class="tool-mini-icon bg-gradient-to-br from-cyan-400/90 to-sky-400/90"></div>
                     <div class="tool-mini-text">
-                      <span class="tool-mini-title">CGATS Viewer</span>
-                      <span class="tool-mini-sub">Test chart inspector</span>
+                      <span class="tool-mini-title">SeaGlass</span>
+                      <span class="tool-mini-sub">CGATS test chart inspector</span>
                     </div>
                   </a>
                   <a href="#tools" class="tool-mini-tile group">
@@ -183,12 +183,12 @@
             <div>
               <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-50">Tools</h2>
               <p class="mt-2 text-sm text-slate-300 max-w-xl">
-                Each card can link to a standalone tool (or GitHub Pages project). Replace the URLs and
-                descriptions once your tools are live.
+                Each card is a tiny “product”: a visual, a short description, and a button to jump into the tool.
+                Swap out the placeholder artwork and URLs with your real stuff.
               </p>
             </div>
             <div class="text-xs text-slate-500">
-              Tip: keep tools fast, focused, and slightly opinionated. That’s the fun part.
+              Tip: keep tools focused. One tool, one job.
             </div>
           </div>
 
@@ -196,95 +196,184 @@
           <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
 
             <!-- Tool card 1 -->
-            <a
-              href="tools/cgats-viewer/index.html"  <!-- TODO: update to your actual URL -->
-              class="tool-card group"
-            >
-              <div class="tool-card-header bg-gradient-to-br from-cyan-500/90 via-sky-500/90 to-emerald-400/90">
-                <span class="tool-card-icon">🎯</span>
-              </div>
-              <div class="tool-card-body">
-                <div class="flex items-center justify-between gap-2">
-                  <h3 class="tool-card-title">CGATS Chart Viewer</h3>
-                  <span class="tool-tag beta">Beta</span>
+            <div class="tool-card group">
+              <!-- Visual area -->
+              <div class="tool-card-media tool-card-media--cyan">
+                <div class="tool-card-media-pill">
+                  <span class="tool-card-media-label">Color · Utility</span>
                 </div>
-                <p class="tool-card-text">
-                  Visualize test charts, inspect patches, and debug color measurement files without launching a full app.
-                </p>
-                <div class="tool-card-footer">
-                  <span>Open tool</span>
-                  <span class="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">↗</span>
+                <div class="tool-card-media-icon">
+                  🎯
+                </div>
+                <div class="tool-card-media-bottom">
+                  <span class="tool-badge tool-badge--beta">Beta</span>
                 </div>
               </div>
-            </a>
 
-            <!-- Tool card 2 -->
-            <a
-              href="tools/pixel-counter/index.html"  <!-- TODO: update to your actual URL -->
-              class="tool-card group"
-            >
-              <div class="tool-card-header bg-gradient-to-br from-emerald-400/90 via-teal-400/90 to-cyan-400/90">
-                <span class="tool-card-icon">📊</span>
-              </div>
+              <!-- Body -->
               <div class="tool-card-body">
-                <div class="flex items-center justify-between gap-2">
-                  <h3 class="tool-card-title">Pixel Counter</h3>
-                  <span class="tool-tag free">Free</span>
-                </div>
+                <h3 class="tool-card-title">CGATS Chart Viewer</h3>
                 <p class="tool-card-text">
-                  Drop in an image and get a breakdown of pixel counts by CMYK (or RGB) values for nerdy print diagnostics.
+                  Visualize test charts, inspect patches, and debug color measurement files directly in your browser.
+                  Great for quick QC and support checks.
                 </p>
-                <div class="tool-card-footer">
-                  <span>Open tool</span>
-                  <span class="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">↗</span>
+                <div class="tool-card-meta">
+                  <span>Web app</span>
+                  <span>CGATS · Test charts</span>
                 </div>
               </div>
-            </a>
+
+              <!-- Actions -->
+              <div class="tool-card-actions">
+                <a
+                  href="tools/cgats-viewer/index.html"  
+                  class="tool-button-primary"
+                >
+                  Open tool
+                  <span aria-hidden="true">↗</span>
+                </a>
+                <button
+                  type="button"
+                  class="tool-link-secondary"
+                  disabled
+                  title="Placeholder – wire up later if you add docs."
+                >
+                  Docs (soon)
+                </button>
+              </div>
+            </div>
+
+                        <!-- Tool card 2 -->
+            <div class="tool-card group">
+              <div class="tool-card-media tool-card-media--emerald">
+                <div class="tool-card-media-pill">
+                  <span class="tool-card-media-label">Analysis · Free</span>
+                </div>
+                <div class="tool-card-media-icon">
+                  📊
+                </div>
+                <div class="tool-card-media-bottom">
+                  <span class="tool-badge tool-badge--free">Free</span>
+                </div>
+              </div>
+
+              <div class="tool-card-body">
+                <h3 class="tool-card-title">Pixel Counter</h3>
+                <p class="tool-card-text">
+                  Drop in an image and get a breakdown of pixel counts by CMYK or RGB values.
+                  Perfect for nerdy print diagnostics and ink coverage discussions.
+                </p>
+                <div class="tool-card-meta">
+                  <span>Web app</span>
+                  <span>Images · Stats</span>
+                </div>
+              </div>
+
+              <div class="tool-card-actions">
+                <a
+                  href="tools/pixel-counter/index.html"
+                  class="tool-button-primary"
+                >
+                  Open tool
+                  <span aria-hidden="true">↗</span>
+                </a>
+                <button
+                  type="button"
+                  class="tool-link-secondary"
+                  disabled
+                >
+                  Docs (soon)
+                </button>
+              </div>
+            </div>
 
             <!-- Tool card 3 -->
-            <a
-              href="tools/deltae-heatmap/index.html"  <!-- TODO: update to your actual URL -->
-              class="tool-card group"
-            >
-              <div class="tool-card-header bg-gradient-to-br from-fuchsia-500/90 via-violet-500/90 to-sky-400/90">
-                <span class="tool-card-icon">🌡</span>
+            <div class="tool-card group">
+              <div class="tool-card-media tool-card-media--magenta">
+                <div class="tool-card-media-pill">
+                  <span class="tool-card-media-label">Color difference</span>
+                </div>
+                <div class="tool-card-media-icon">
+                  🌡
+                </div>
+                <div class="tool-card-media-bottom">
+                  <span class="tool-badge tool-badge--pro">Pro-ish</span>
+                </div>
               </div>
+
               <div class="tool-card-body">
-                <div class="flex items-center justify-between gap-2">
-                  <h3 class="tool-card-title">∆E Heatmap</h3>
-                  <span class="tool-tag pro">Pro-ish</span>
-                </div>
+                <h3 class="tool-card-title">∆E Heatmap</h3>
                 <p class="tool-card-text">
-                  Compare reference vs. sample and see DeltaE visualized as a heatmap directly in your browser.
+                  Compare reference vs. sample data and see DeltaE visualized as a heatmap.
+                  Quickly spot problem areas without digging through tables.
                 </p>
-                <div class="tool-card-footer">
-                  <span>Open tool</span>
-                  <span class="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform">↗</span>
+                <div class="tool-card-meta">
+                  <span>Web app</span>
+                  <span>DeltaE · QC</span>
                 </div>
               </div>
-            </a>
+
+              <div class="tool-card-actions">
+                <a
+                  href="tools/deltae-heatmap/index.html"
+                  class="tool-button-primary"
+                >
+                  Open tool
+                  <span aria-hidden="true">↗</span>
+                </a>
+                <button
+                  type="button"
+                  class="tool-link-secondary"
+                  disabled
+                >
+                  Docs (soon)
+                </button>
+              </div>
+            </div>
 
             <!-- Tool card 4 – placeholder -->
-            <a
-              href="#"
-              class="tool-card group opacity-75 hover:opacity-100"
-            >
-              <div class="tool-card-header bg-gradient-to-br from-slate-500/90 via-slate-600/90 to-slate-800/90">
-                <span class="tool-card-icon">🧪</span>
-              </div>
-              <div class="tool-card-body">
-                <div class="flex items-center justify-between gap-2">
-                  <h3 class="tool-card-title">Next experiment</h3>
-                  <span class="tool-tag wip">WIP</span>
+            <div class="tool-card group opacity-80 hover:opacity-100">
+              <div class="tool-card-media tool-card-media--neutral">
+                <div class="tool-card-media-pill">
+                  <span class="tool-card-media-label">Up next</span>
                 </div>
+                <div class="tool-card-media-icon">
+                  🧪
+                </div>
+                <div class="tool-card-media-bottom">
+                  <span class="tool-badge tool-badge--wip">In progress</span>
+                </div>
+              </div>
+
+              <div class="tool-card-body">
+                <h3 class="tool-card-title">Next experiment</h3>
                 <p class="tool-card-text">
-                  Placeholder for the next weird little utility you come up with. Rename and hook it up later.
+                  Placeholder for your next idea. Rename this card and hook up the button once the
+                  next tiny tool is ready for the world.
                 </p>
-                <div class="tool-card-footer">
+                <div class="tool-card-meta">
+                  <span>Web app</span>
                   <span>Coming soon</span>
                 </div>
               </div>
-            </a>
+
+              <div class="tool-card-actions">
+                <button
+                  type="button"
+                  class="tool-button-primary tool-button-primary--ghost"
+                  disabled
+                >
+                  Coming soon
+                </button>
+                <button
+                  type="button"
+                  class="tool-link-secondary"
+                  disabled
+                >
+                  Suggest idea
+                </button>
+              </div>
+            </div>
 
           </div>
         </div>
@@ -329,12 +418,12 @@
             </div>
             <div class="text-sm text-slate-300">
               <!-- Replace this with a real email/contact method -->
-              <a href="mailto:you@example.com" class="inline-flex items-center gap-2 rounded-full border border-slate-700 px-4 py-2 hover:border-cyan-400 hover:text-cyan-200 transition">
+              <a href="mailto:birgit.plautz@gmail.com" class="inline-flex items-center gap-2 rounded-full border border-slate-700 px-4 py-2 hover:border-cyan-400 hover:text-cyan-200 transition">
                 Email Biggi
                 <span aria-hidden="true">✉️</span>
               </a>
               <p class="mt-1 text-xs text-slate-500">
-                Replace this email with your real contact or a form later.
+                You can always send me your feedback or ideas. I won't promise to read them. Even less likely that I respond. But if it's a good idea, I'll certainly make it my own.
               </p>
             </div>
           </div>
