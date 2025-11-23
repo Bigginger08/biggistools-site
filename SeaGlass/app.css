@@ -1,0 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300;500;700&family=DynaPuff:wght@400;600&display=swap');
+
+/* Simple font utility classes used by the viewer */
+body {
+  font-family: "Quicksand", system-ui;
+  background-image: url("/assets/seaglass.jpg");
+  background-size: cover;         /* nicely fills screen */
+  background-position: center;    /* centers the image */
+  background-attachment: fixed;   /* subtle parallax effect */
+  background-repeat: no-repeat;   /* no tiling */
+}
+
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35); /* adjustable darkness */
+  pointer-events: none;
+  z-index: -1;
+}
+
+
+.font-quicksand {
+  font-family: "Quicksand", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.font-dynapuff {
+  font-family: "DynaPuff", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.font-barriecito {
+  font-family: "Barriecito", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.patch-square {
+  width: 100%;
+  height: 100%;
+}
