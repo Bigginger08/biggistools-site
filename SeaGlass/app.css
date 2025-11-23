@@ -3,7 +3,7 @@
 /* Simple font utility classes used by the viewer */
 body {
   font-family: "Quicksand", system-ui;
-  background-image: url("/assets/seaglass.jpg");
+  background-image: url("/SeaGlass/assets/seaglass.jpg");
   background-size: cover;         /* nicely fills screen */
   background-position: center;    /* centers the image */
   background-attachment: fixed;   /* subtle parallax effect */
