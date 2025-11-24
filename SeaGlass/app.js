@@ -50,6 +50,8 @@ const indexControlsHint  = document.getElementById("indexControlsHint");
 const patchDetailsPanel  = document.getElementById("patchDetailsPanel");
 const headerToggleButton = document.getElementById("headerToggleButton");
 const headerControls     = document.getElementById("headerControls");
+const clearRefButton     = document.getElementById("clearRefButton");
+const clearSampleButton  = document.getElementById("clearSampleButton");
 
 // -----------------------------------------------------------------------------
 // Header collapse / expand
@@ -61,6 +63,71 @@ if (headerToggleButton && headerControls) {
     headerToggleButton.textContent = isHidden ? "Show controls" : "Hide controls";
   });
 }
+
+// -----------------------------------------------------------------------------
+// Clear buttons for reference and sample
+// -----------------------------------------------------------------------------
+
+if (clearRefButton) {
+  clearRefButton.addEventListener("click", () => {
+    // Reset reference state
+    refPatches = null;
+    refLayoutMeta = null;
+    refFileNames = [];
+
+    // Clear file input element
+    if (refInput) refInput.value = "";
+    if (refFilesListEl) refFilesListEl.textContent = "";
+
+    // Clear chart + stats + labels
+    chartContainer.innerHTML = "";
+    modeLabel.textContent = "Waiting for reference chart…";
+    summaryEl.textContent = "";
+
+    if (statsPanel) {
+      statsPanel.innerHTML = `
+        <div class="font-semibold text-slate-100 mb-1 text-xs">
+          ΔE00 statistics
+        </div>
+        <div class="text-[11px] text-slate-300">
+          Load a reference and sample chart to see statistics.
+        </div>
+      `;
+    }
+
+    // Hide patch inspector (optional but sensible)
+    if (patchDetailsPanel) {
+      patchDetailsPanel.classList.add("hidden");
+      patchDetailsPanel.innerHTML = `
+        <div class="font-semibold text-slate-100 mb-1 text-xs">
+          Selected patch
+        </div>
+        <div class="text-[11px] text-slate-300">
+          Click a patch in the chart to see detailed values.
+        </div>
+      `;
+    }
+  });
+}
+
+if (clearSampleButton) {
+  clearSampleButton.addEventListener("click", () => {
+    // Reset sample state
+    samplePatches = null;
+    sampleLayoutMeta = null;
+    sampleFileNames = [];
+
+    if (sampleInput) sampleInput.value = "";
+    if (sampleFilesListEl) sampleFilesListEl.textContent = "";
+
+    // When sample is cleared but reference remains, we just fall back to ref-only view
+    // (no ΔE stats, no sample colors).
+    // Easiest: force view mode to reference colors and re-render.
+    viewMode = "refColors";
+    setViewMode("refColors"); // will call updateView() and reset stats message
+  });
+}
+
 
 
 // -----------------------------------------------------------------------------

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Biggi's SeaGlass</title>
-  <link rel="icon" type="image/x-icon" href="/SeaGlass/assets/seaGlassFavicon2.png">
+  <link rel="icon" type="image/x-icon" href="/assets/seaGlassFavicon2.png">
 
 
   <!-- Tailwind via CDN -->
@@ -18,7 +18,7 @@
   <style>
       body {
         font-family: "Quicksand", system-ui;
-        background-image: url("/SeaGlass/assets/seaglass.jpg");
+        background-image: url("/assets/seaglass.jpg");
         background-size: cover;         /* nicely fills screen */
         background-position: center;    /* centers the image */
         background-attachment: fixed;   /* subtle parallax effect */
@@ -60,38 +60,10 @@
   </style>
 </head>
 
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-QYVMGCKWDP"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-QYVMGCKWDP');
-</script>
-  
 <body class="bg-teal-950 text-teal-50 min-h-screen">
   <div class="bg-teal-950/75 max-w-7xl mx-auto py-8 px-4">
 
     <header class="sticky top-0 z-20 bg-teal-950/95 backdrop-blur border-b border-teal-800 mb-4">
-      <a 
-  href="https://biggitools.com" 
-  target="_blank"
-  style="
-    position: fixed;
-    top: 12px;
-    right: 16px;
-    font-size: 12px;
-    color: #cbd5f5;
-    text-decoration: none;
-    background: rgba(2, 6, 23, 0.7);
-    padding: 6px 10px;
-    border-radius: 999px;
-    border: 1px solid rgba(56, 189, 248, 0.4);
-  "
->
-  ← Back to BiggiTools
-</a>
       <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col gap-4">
 
         <div class="flex items-end my-1">
@@ -120,18 +92,29 @@
           <!-- Reference -->
           <div class="flex flex-col gap-1">
             <span class="text-sm font-medium">Reference chart (CGATS)</span>
-            <input
-              id="refFile"
-              type="file"
-              multiple
-              accept=".txt,.cgats,.cie,.dat"
-              class="block w-full text-sm text-slate-200
-                     file:mr-4 file:py-2 file:px-4
-                     file:rounded-md file:border-0
-                     file:text-sm file:font-semibold
-                     file:bg-emerald-700 file:text-white
-                     hover:file:bg-emerald-600"
-            />
+              <div class="flex items-center gap-2">
+                  <input
+                    id="refFile"
+                    type="file"
+                    multiple
+                    accept=".txt,.cgats,.cie,.dat"
+                    class="block w-full text-sm text-slate-200
+                          file:mr-4 file:py-2 file:px-4
+                          file:rounded-md file:border-0
+                          file:text-sm file:font-semibold
+                          file:bg-emerald-700 file:text-white
+                          hover:file:bg-emerald-600"
+                  />
+                  <button
+                    id="clearRefButton"
+                    type="button"
+                    class="shrink-0 mx-8 px-2 py-1 text-xs rounded-full border border-slate-600
+                          bg-slate-800/40 text-slate-200 hover:bg-slate-700/80"
+                    title="Clear reference"
+                  >
+                    ✕
+                  </button>
+                </div>
             <!-- List of all files used in averaged reference -->
             <div id="refFilesList" class="text-xs text-slate-300 line-clamp-2"></div>
           </div>
@@ -139,18 +122,29 @@
           <!-- Sample -->
           <div class="flex flex-col gap-1">
             <span class="text-sm font-medium">Sample chart (CGATS)</span>
-            <input
-              id="sampleFile"
-              type="file"
-              multiple
-              accept=".txt,.cgats,.cie,.dat"
-              class="block w-full text-sm text-slate-200
-                     file:mr-4 file:py-2 file:px-4
-                     file:rounded-md file:border-0
-                     file:text-sm file:font-semibold
-                     file:bg-emerald-700 file:text-white
-                     hover:file:bg-emerald-600"
-            />
+                <div class="flex items-center gap-2">
+                  <input
+                    id="sampleFile"
+                    type="file"
+                    multiple
+                    accept=".txt,.cgats,.cie,.dat"
+                    class="block w-full text-sm text-slate-200
+                          file:mr-4 file:py-2 file:px-4
+                          file:rounded-md file:border-0
+                          file:text-sm file:font-semibold
+                          file:bg-emerald-700 file:text-white
+                          hover:file:bg-emerald-600"
+                  />
+                  <button
+                    id="clearSampleButton"
+                    type="button"
+                    class="shrink-0 mx-8 px-2 py-1 text-xs rounded-full border border-slate-600
+                          bg-slate-800/40 text-slate-200 hover:bg-slate-700/80"
+                    title="Clear sample"
+                  >
+                    ✕
+                  </button>
+                </div>
             <!-- List of all files used in averaged sample -->
             <div id="sampleFilesList" class="text-xs text-slate-300 line-clamp-2"></div>
           </div>
