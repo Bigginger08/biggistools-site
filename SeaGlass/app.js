@@ -923,16 +923,18 @@ async function loadCgatsFile(file) {
   return parseCgats(text);
 }
 
+// Load multiple CGATS files and return an averaged patchMap + layoutMeta + fileNames
 async function loadMultipleCgats(files) {
   if (!files.length) {
     throw new Error("No CGATS files selected.");
   }
 
+  // 1) Parse all files
   const results = await Promise.all(
-    files.map((f) =>
+    Array.from(files).map((f) =>
       loadCgatsFile(f).then((res) => ({
         name: f.name,
-        patchMap: res.patchMap,
+        patchMap: res.patchMap,   // or res.patches in your code
         layoutMeta: res.layoutMeta,
       }))
     )
@@ -940,37 +942,45 @@ async function loadMultipleCgats(files) {
 
   const fileNames = results.map((r) => r.name);
 
-  const idSets = results.map((r) => new Set(Object.keys(r.patchMap)));
-  let commonIds = Array.from(idSets[0]);
-  for (let i = 1; i < idSets.length; i++) {
-    commonIds = commonIds.filter((id) => idSets[i].has(id));
+  // 2) Build the union of all patch IDs across all files
+  const allIdSet = new Set();
+  results.forEach((r) => {
+    Object.keys(r.patchMap).forEach((id) => allIdSet.add(id));
+  });
+  const allIds = Array.from(allIdSet);
+
+  if (!allIds.length) {
+    throw new Error("No patches found in selected CGATS files.");
   }
 
-  if (!commonIds.length) {
-    throw new Error("Selected files have no common SAMPLE_ID / PATCH_ID values.");
-  }
-
+  // 3) Average Lab and index values per ID over only the files that contain that ID
   const averagedPatchMap = {};
 
-  commonIds.forEach((id) => {
+  allIds.forEach((id) => {
+    let metaRef = null;
     let sumL = 0;
     let sumA = 0;
     let sumB = 0;
-    let metaRef = null;
+    let countLab = 0;
 
-    const sumIndexValues = {};
+    const sumIndexValues = {}; // field → { sum, count }
 
     results.forEach((r) => {
       const p = r.patchMap[id];
-      if (!p) return;
+      if (!p) return; // this file doesn’t have that patch
+
       if (!metaRef) metaRef = p;
 
-      sumL += p.L;
-      sumA += p.a;
-      sumB += p.b;
+      if (typeof p.L === "number" && typeof p.a === "number" && typeof p.b === "number") {
+        sumL += p.L;
+        sumA += p.a;
+        sumB += p.b;
+        countLab++;
+      }
 
       if (p.indexValues) {
         for (const [field, val] of Object.entries(p.indexValues)) {
+          if (val == null || Number.isNaN(val)) continue;
           if (!sumIndexValues[field]) {
             sumIndexValues[field] = { sum: 0, count: 0 };
           }
@@ -980,7 +990,10 @@ async function loadMultipleCgats(files) {
       }
     });
 
-    const nFiles = results.length;
+    if (!metaRef || countLab === 0) {
+      // nobody had Lab for this ID → skip it
+      return;
+    }
 
     const indexValues = {};
     for (const [field, agg] of Object.entries(sumIndexValues)) {
@@ -990,17 +1003,24 @@ async function loadMultipleCgats(files) {
     }
 
     averagedPatchMap[id] = {
-      ...metaRef,
-      L: sumL / nFiles,
-      a: sumA / nFiles,
-      b: sumB / nFiles,
+      ...metaRef, // keeps page / row / col / sampleId from first file that had this patch
+      L: sumL / countLab,
+      a: sumA / countLab,
+      b: sumB / countLab,
       indexValues,
     };
   });
 
+  const averagedIds = Object.keys(averagedPatchMap);
+  if (!averagedIds.length) {
+    throw new Error("No common patches with valid Lab values across the selected files.");
+  }
+
+  // 4) Layout: use the first file as reference, but keep index field intersection
   const baseLayout = results[0].layoutMeta;
   const layoutMeta = { ...baseLayout };
 
+  // intersect index field names across all files
   let idxFields = [...(baseLayout.indexFields || [])];
   for (let i = 1; i < results.length; i++) {
     const lf = results[i].layoutMeta.indexFields || [];
@@ -1008,16 +1028,17 @@ async function loadMultipleCgats(files) {
   }
   layoutMeta.indexFields = idxFields;
 
+  // Optional: warn if layout differs across files
   for (let i = 1; i < results.length; i++) {
     const lm = results[i].layoutMeta;
     if (
       lm.numberOfStrips !== baseLayout.numberOfStrips ||
-      lm.totalRows !== baseLayout.totalRows ||
-      lm.rowsPerPage !== baseLayout.rowsPerPage ||
-      lm.maxCol !== baseLayout.maxCol
+      lm.totalRows      !== baseLayout.totalRows ||
+      lm.rowsPerPage    !== baseLayout.rowsPerPage ||
+      lm.maxCol         !== baseLayout.maxCol
     ) {
       console.warn(
-        "Layout meta differs between files, using first file as reference.",
+        "Layout meta differs between files; using first file as reference.",
         { baseLayout, differing: lm, file: results[i].name }
       );
     }
@@ -1025,6 +1046,7 @@ async function loadMultipleCgats(files) {
 
   return { patchMap: averagedPatchMap, layoutMeta, fileNames };
 }
+
 
 function parseCgats(text) {
   const lines = text
