@@ -18,7 +18,7 @@
   <style>
       body {
         font-family: "Quicksand", system-ui;
-        background-image: url("/SeaGlass//assets/seaglass.jpg");
+        background-image: url("/SeaGlass/assets/seaglass.jpg");
         background-size: cover;         /* nicely fills screen */
         background-position: center;    /* centers the image */
         background-attachment: fixed;   /* subtle parallax effect */
@@ -60,10 +60,39 @@
   </style>
 </head>
 
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-QYVMGCKWDP"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-QYVMGCKWDP');
+</script>
+
+  
 <body class="bg-teal-950 text-teal-50 min-h-screen">
   <div class="bg-teal-950/75 max-w-7xl mx-auto py-8 px-4">
 
     <header class="sticky top-0 z-20 bg-teal-950/95 backdrop-blur border-b border-teal-800 mb-4">
+      <a 
+            href="https://biggitools.com" 
+            target="_blank"
+            style="
+              position: fixed;
+              top: 12px;
+              right: 16px;
+              font-size: 12px;
+              color: #cbd5f5;
+              text-decoration: none;
+              background: rgba(2, 6, 23, 0.7);
+              padding: 6px 10px;
+              border-radius: 999px;
+              border: 1px solid rgba(56, 189, 248, 0.4);
+            "
+          >
+            ← Back to BiggiTools
+      </a>
       <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col gap-4">
 
         <div class="flex items-end my-1">
