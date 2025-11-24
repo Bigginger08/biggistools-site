@@ -421,11 +421,164 @@ function updateView() {
     }
   }
 
+  // Repeatability maps for heatmaps
+  let refRepeatMap = null;
+  let refRepeatMax = 0;
+  let sampleRepeatMap = null;
+  let sampleRepeatMax = 0;
+
+  if (viewMode === "refRepeat" && refPatches) {
+    refRepeatMap = {};
+    const vals = [];
+
+    allIds.forEach((id) => {
+      const p = refPatches[id];
+      if (!p || !p.repeatStats || p.repeatStats.count <= 1 || p.repeatStats.maxDE == null) return;
+      refRepeatMap[id] = p.repeatStats.maxDE;
+      vals.push(p.repeatStats.maxDE);
+    });
+
+    if (vals.length) {
+      refRepeatMax = Math.max(...vals);
+
+      // show statsPanel for ref repeatability
+      const sorted = vals.slice().sort((a, b) => a - b);
+      const n = sorted.length;
+      const max = sorted[n - 1];
+      const sum = sorted.reduce((a, b) => a + b, 0);
+      const avg = sum / n;
+      const median = n % 2 ? sorted[(n - 1) / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
+      const pIndex = (n - 1) * 0.95;
+      const lo = Math.floor(pIndex);
+      const hi = Math.ceil(pIndex);
+      const p95 = lo === hi ? sorted[lo] : sorted[lo] * (1 - (pIndex - lo)) + sorted[hi] * (pIndex - lo);
+
+      if (statsPanel) {
+        statsPanel.innerHTML = `
+          <div class="font-semibold text-slate-100 mb-1 text-xs">
+            Ref repeatability (ΔE00 vs mean)
+          </div>
+          <table class="w-full text-[11px] text-slate-100 border-collapse">
+            <tbody>
+              <tr>
+                <td class="pr-2 text-slate-400">Patches with N&gt;1</td>
+                <td class="text-right">${n}</td>
+              </tr>
+              <tr>
+                <td class="pr-2 text-slate-400">Average</td>
+                <td class="text-right">${avg.toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td class="pr-2 text-slate-400">Median</td>
+                <td class="text-right">${median.toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td class="pr-2 text-slate-400">95th percentile</td>
+                <td class="text-right">${p95.toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td class="pr-2 text-slate-400">Max</td>
+                <td class="text-right">${max.toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+      }
+    } else {
+      refRepeatMap = null;
+      if (statsPanel) {
+        statsPanel.innerHTML = `
+          <div class="font-semibold text-slate-100 mb-1 text-xs">
+            Ref repeatability (ΔE00 vs mean)
+          </div>
+          <div class="text-[11px] text-slate-300">
+            No repeatability data: only 1 reference file or no multi-file patches.
+          </div>
+        `;
+      }
+    }
+  }
+
+  if (viewMode === "sampleRepeat" && samplePatches) {
+    sampleRepeatMap = {};
+    const vals = [];
+
+    allIds.forEach((id) => {
+      const p = samplePatches[id];
+      if (!p || !p.repeatStats || p.repeatStats.count <= 1 || p.repeatStats.maxDE == null) return;
+      sampleRepeatMap[id] = p.repeatStats.maxDE;
+      vals.push(p.repeatStats.maxDE);
+    });
+
+    if (vals.length) {
+      sampleRepeatMax = Math.max(...vals);
+
+      const sorted = vals.slice().sort((a, b) => a - b);
+      const n = sorted.length;
+      const max = sorted[n - 1];
+      const sum = sorted.reduce((a, b) => a + b, 0);
+      const avg = sum / n;
+      const median = n % 2 ? sorted[(n - 1) / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
+      const pIndex = (n - 1) * 0.95;
+      const lo = Math.floor(pIndex);
+      const hi = Math.ceil(pIndex);
+      const p95 = lo === hi ? sorted[lo] : sorted[lo] * (1 - (pIndex - lo)) + sorted[hi] * (pIndex - lo);
+
+      if (statsPanel) {
+        statsPanel.innerHTML = `
+          <div class="font-semibold text-slate-100 mb-1 text-xs">
+            Sample repeatability (ΔE00 vs mean)
+          </div>
+          <table class="w-full text-[11px] text-slate-100 border-collapse">
+            <tbody>
+              <tr>
+                <td class="pr-2 text-slate-400">Patches with N&gt;1</td>
+                <td class="text-right">${n}</td>
+              </tr>
+              <tr>
+                <td class="pr-2 text-slate-400">Average</td>
+                <td class="text-right">${avg.toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td class="pr-2 text-slate-400">Median</td>
+                <td class="text-right">${median.toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td class="pr-2 text-slate-400">95th percentile</td>
+                <td class="text-right">${p95.toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td class="pr-2 text-slate-400">Max</td>
+                <td class="text-right">${max.toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+      }
+    } else {
+      sampleRepeatMap = null;
+      if (statsPanel) {
+        statsPanel.innerHTML = `
+          <div class="font-semibold text-slate-100 mb-1 text-xs">
+            Sample repeatability (ΔE00 vs mean)
+          </div>
+          <div class="text-[11px] text-slate-300">
+            No repeatability data: only 1 sample file or no multi-file patches.
+          </div>
+        `;
+      }
+    }
+  }
+
+
+
   const showDelta       = hasSample && deltaMap && viewMode === "deltaE";
   const showDeltaLab    = hasSample && viewMode === "deltaLab";
   const showSampleColor = hasSample && viewMode === "sampleColors";
   const showIndexValues = viewMode === "index";
-
+  const showRefRepeat    = viewMode === "refRepeat";
+  const showSampleRepeat = viewMode === "sampleRepeat";
+  
   const refCount    = refFileNames.length || 1;
   const sampleCount = hasSample ? (sampleFileNames.length || 1) : 0;
 
@@ -446,6 +599,12 @@ function updateView() {
     modeLabel.textContent = "Index values";
     const which = selectedIndexField ? `Channel: ${selectedIndexField}` : "No index channel available";
     summaryEl.textContent = `${which} · Ref files: ${refCount} · Sample files: ${sampleCount}`;
+    } else if (showRefRepeat) {
+    modeLabel.textContent = "Repeatability heatmap (reference)";
+    summaryEl.textContent = `ΔE00 vs mean per patch · Reference files: ${refCount}`;
+  } else if (showSampleRepeat) {
+    modeLabel.textContent = "Repeatability heatmap (sample)";
+    summaryEl.textContent = `ΔE00 vs mean per patch · Sample files: ${sampleCount}`;
   } else {
     modeLabel.textContent = "Color (reference chart)";
     summaryEl.textContent = `Reference colors · Ref files: ${refCount} · Sample files: ${sampleCount}`;
@@ -510,7 +669,18 @@ function updateView() {
       let text = "";
       let extraInfo = "";
 
-      if (showDelta && deltaMap && deltaMap[id] != null) {
+
+      if (showRefRepeat && refRepeatMap && refRepeatMap[id] != null) {
+        const rDE = refRepeatMap[id];
+        bgColor = deltaEToHeatColor(rDE, refRepeatMax || 5);
+        text = rDE.toFixed(2);
+        extraInfo = `Ref repeatability ΔE00 vs mean: ${rDE.toFixed(3)}`;
+      } else if (showSampleRepeat && sampleRepeatMap && sampleRepeatMap[id] != null) {
+        const sDE = sampleRepeatMap[id];
+        bgColor = deltaEToHeatColor(sDE, sampleRepeatMax || 5);
+        text = sDE.toFixed(2);
+        extraInfo = `Sample repeatability ΔE00 vs mean: ${sDE.toFixed(3)}`;
+      } else if (showDelta && deltaMap && deltaMap[id] != null) {
         const dE = deltaMap[id];
         bgColor = deltaEToHeatColor(dE, layout.maxDelta);
         text = dE.toFixed(1);
@@ -600,13 +770,11 @@ function updateView() {
 function handlePatchClick(id) {
   if (!patchDetailsPanel || !refPatches || !refPatches[id]) return;
 
-  // show the panel when a patch is clicked
   patchDetailsPanel.classList.remove("hidden");
 
   const ref = refPatches[id];
   const sample = samplePatches ? samplePatches[id] : null;
 
-  // Location info
   const page = (ref.page != null ? ref.page : 0) + 1;
   const row = ref.row != null ? ref.row : "–";
   const col = ref.col != null ? ref.col : "–";
@@ -655,13 +823,51 @@ function handlePatchClick(id) {
 
   const fmt = (v, digits = 2) =>
     v == null || Number.isNaN(v) ? "–" : v.toFixed(digits);
-
   const fmtInt = (v) =>
     v == null || Number.isNaN(v) ? "–" : v.toFixed(0);
 
+  // --- Repeatability (new) ---------------------------------------------------
+  const refRep = ref.repeatStats || null;
+  const sampleRep = sample ? sample.repeatStats || null : null;
+
+  let refRepHtml = `
+    <div class="text-slate-500 text-[11px]">
+      No repeatability data (1 file) for reference.
+    </div>
+  `;
+  if (refRep && refRep.count > 1) {
+    refRepHtml = `
+      <div class="text-slate-300 text-[11px]">
+        N = ${refRep.count} ref files ·
+        σL = ${fmt(refRep.stdL, 2)},
+        σa = ${fmt(refRep.stdA, 2)},
+        σb = ${fmt(refRep.stdB, 2)}<br/>
+        mean ΔE00 (vs mean) = ${fmt(refRep.meanDE, 2)},
+        max ΔE00 = ${fmt(refRep.maxDE, 2)}
+      </div>
+    `;
+  }
+
+  let sampleRepHtml = `
+    <div class="text-slate-500 text-[11px]">
+      No repeatability data (1 file) for sample.
+    </div>
+  `;
+  if (sampleRep && sampleRep.count > 1) {
+    sampleRepHtml = `
+      <div class="text-slate-300 text-[11px]">
+        N = ${sampleRep.count} sample files ·
+        σL = ${fmt(sampleRep.stdL, 2)},
+        σa = ${fmt(sampleRep.stdA, 2)},
+        σb = ${fmt(sampleRep.stdB, 2)}<br/>
+        mean ΔE00 (vs mean) = ${fmt(sampleRep.meanDE, 2)},
+        max ΔE00 = ${fmt(sampleRep.maxDE, 2)}
+      </div>
+    `;
+  }
+
   // --- Build index text rows -------------------------------------------------
   let indexRowsHtml = "";
-
   channels.forEach((ch) => {
     const refVal =
       ref.indexValues && ref.indexValues[ch] != null
@@ -681,7 +887,6 @@ function handlePatchClick(id) {
       </div>
     `;
   });
-
   if (!indexRowsHtml) {
     indexRowsHtml = `
       <div class="text-slate-500 text-[11px]">
@@ -702,12 +907,11 @@ function handlePatchClick(id) {
         ? sample.indexValues[ch]
         : null;
 
-    // Use sample as primary visual; fall back to ref if sample missing
     const barSource = sampleVal != null ? sampleVal : refVal;
     if (barSource == null) return;
 
     const v = Math.max(0, Math.min(100, barSource));
-    const width = Math.max(3, Math.round(v)); // min width for visibility
+    const width = Math.max(3, Math.round(v));
 
     const rgb = indexValueToRGB(ch, v / 100);
     const barColor = rgbToCSS(rgb);
@@ -724,7 +928,6 @@ function handlePatchClick(id) {
       </div>
     `;
   });
-
   if (!indexBarsHtml) {
     indexBarsHtml = `
       <div class="text-slate-500 text-[10px]">
@@ -733,7 +936,6 @@ function handlePatchClick(id) {
     `;
   }
 
-  // --- Assemble inspector HTML ----------------------------------------------
   const html = `
     <div class="font-semibold text-slate-100 mb-1 text-xs">
       Selected patch: ${id}
@@ -791,6 +993,14 @@ function handlePatchClick(id) {
             <div>ΔE00: ${fmt(dE, 2)}</div>
           </div>
         </div>
+
+        <div class="mt-1 border-t border-slate-700 pt-1">
+          <div class="font-semibold text-slate-200 mb-1">Repeatability</div>
+          <div class="space-y-0.5">
+            <div><span class="text-slate-400">Reference:</span> ${refRepHtml}</div>
+            <div><span class="text-slate-400">Sample:</span> ${sampleRepHtml}</div>
+          </div>
+        </div>
       </div>
 
       <!-- Color chips + index chart -->
@@ -820,6 +1030,7 @@ function handlePatchClick(id) {
 
   patchDetailsPanel.innerHTML = html;
 }
+
 
 
 // -----------------------------------------------------------------------------
@@ -1001,7 +1212,7 @@ async function loadMultipleCgats(files) {
     Array.from(files).map((f) =>
       loadCgatsFile(f).then((res) => ({
         name: f.name,
-        patchMap: res.patchMap,   // or res.patches in your code
+        patchMap: res.patchMap,
         layoutMeta: res.layoutMeta,
       }))
     )
@@ -1009,7 +1220,7 @@ async function loadMultipleCgats(files) {
 
   const fileNames = results.map((r) => r.name);
 
-  // 2) Build the union of all patch IDs across all files
+  // 2) Union of all patch IDs across files
   const allIdSet = new Set();
   results.forEach((r) => {
     Object.keys(r.patchMap).forEach((id) => allIdSet.add(id));
@@ -1020,8 +1231,16 @@ async function loadMultipleCgats(files) {
     throw new Error("No patches found in selected CGATS files.");
   }
 
-  // 3) Average Lab and index values per ID over only the files that contain that ID
   const averagedPatchMap = {};
+
+  // helper for std dev
+  const stdDev = (arr) => {
+    const n = arr.length;
+    if (n < 2) return 0;
+    const mean = arr.reduce((a, b) => a + b, 0) / n;
+    const varSum = arr.reduce((a, b) => a + (b - mean) * (b - mean), 0);
+    return Math.sqrt(varSum / (n - 1));
+  };
 
   allIds.forEach((id) => {
     let metaRef = null;
@@ -1031,6 +1250,7 @@ async function loadMultipleCgats(files) {
     let countLab = 0;
 
     const sumIndexValues = {}; // field → { sum, count }
+    const measurements = [];   // per-file Lab for repeatability
 
     results.forEach((r) => {
       const p = r.patchMap[id];
@@ -1043,6 +1263,14 @@ async function loadMultipleCgats(files) {
         sumA += p.a;
         sumB += p.b;
         countLab++;
+
+        measurements.push({
+          L: p.L,
+          a: p.a,
+          b: p.b,
+          indexValues: p.indexValues ? { ...p.indexValues } : {},
+          fileName: r.name,
+        });
       }
 
       if (p.indexValues) {
@@ -1062,6 +1290,39 @@ async function loadMultipleCgats(files) {
       return;
     }
 
+    const meanL = sumL / countLab;
+    const meanA = sumA / countLab;
+    const meanB = sumB / countLab;
+
+    // compute repeatability ΔE vs mean and std dev of L,a,b
+    let repeatStats = null;
+    if (measurements.length > 1) {
+      const dEs = measurements.map((m) =>
+        deltaE2000(
+          { L: meanL, a: meanA, b: meanB },
+          { L: m.L, a: m.a, b: m.b }
+        )
+      );
+
+      const n = dEs.length;
+      const sumDE = dEs.reduce((a, b) => a + b, 0);
+      const meanDE = sumDE / n;
+      const maxDE = Math.max(...dEs);
+
+      const Lvals = measurements.map((m) => m.L);
+      const avals = measurements.map((m) => m.a);
+      const bvals = measurements.map((m) => m.b);
+
+      repeatStats = {
+        count: n,
+        stdL: stdDev(Lvals),
+        stdA: stdDev(avals),
+        stdB: stdDev(bvals),
+        meanDE,
+        maxDE,
+      };
+    }
+
     const indexValues = {};
     for (const [field, agg] of Object.entries(sumIndexValues)) {
       if (agg.count > 0) {
@@ -1070,11 +1331,12 @@ async function loadMultipleCgats(files) {
     }
 
     averagedPatchMap[id] = {
-      ...metaRef, // keeps page / row / col / sampleId from first file that had this patch
-      L: sumL / countLab,
-      a: sumA / countLab,
-      b: sumB / countLab,
+      ...metaRef, // keeps page / row / col / sampleId, etc.
+      L: meanL,
+      a: meanA,
+      b: meanB,
       indexValues,
+      repeatStats, // NEW: per-patch variability for this set of files
     };
   });
 
@@ -1083,11 +1345,10 @@ async function loadMultipleCgats(files) {
     throw new Error("No common patches with valid Lab values across the selected files.");
   }
 
-  // 4) Layout: use the first file as reference, but keep index field intersection
+  // 4) Layout: use the first file as reference, intersect index fields
   const baseLayout = results[0].layoutMeta;
   const layoutMeta = { ...baseLayout };
 
-  // intersect index field names across all files
   let idxFields = [...(baseLayout.indexFields || [])];
   for (let i = 1; i < results.length; i++) {
     const lf = results[i].layoutMeta.indexFields || [];
@@ -1095,7 +1356,6 @@ async function loadMultipleCgats(files) {
   }
   layoutMeta.indexFields = idxFields;
 
-  // Optional: warn if layout differs across files
   for (let i = 1; i < results.length; i++) {
     const lm = results[i].layoutMeta;
     if (
@@ -1113,6 +1373,7 @@ async function loadMultipleCgats(files) {
 
   return { patchMap: averagedPatchMap, layoutMeta, fileNames };
 }
+
 
 
 function parseCgats(text) {

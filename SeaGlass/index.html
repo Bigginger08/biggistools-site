@@ -232,6 +232,21 @@
               >
                 Index values
               </button>
+              <!-- NEW: repeatability modes -->
+              <button
+                type="button"
+                class="view-mode-btn px-2 py-1 rounded-full border border-slate-600 bg-slate-800/80 hover:bg-slate-700/80"
+                data-mode="refRepeat"
+              >
+                Ref repeatability
+              </button>
+              <button
+                type="button"
+                class="view-mode-btn px-2 py-1 rounded-full border border-slate-600 bg-slate-800/80 hover:bg-slate-700/80"
+                data-mode="sampleRepeat"
+              >
+                Sample repeatability
+              </button>
             </div>
 
             <!-- Index-mode extra controls -->
@@ -317,7 +332,7 @@
 
     <main class="flex-1 overflow-auto">
       <div class="max-w-10xl mx-auto px-4 py-4">
-        <div id="chartContainer" class="flex justify-center space-y-6">
+        <div id="chartContainer" class="flex flex-col items-center gap-6">
           <!-- Pages will be injected here -->
         </div>
       </div>
