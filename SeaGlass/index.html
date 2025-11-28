@@ -57,6 +57,25 @@
       width: 100%;
       height: 100%;
     }
+
+    .patch-square {
+      transition: transform 0.08s ease, box-shadow 0.08s ease, border-color 0.08s ease;
+    }
+
+    .patch-square:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25);
+    }
+
+    .patch-square.patch-selected {
+      box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.9); /* emerald glow */
+      border-color: rgb(34, 197, 94);
+    }
+
+    .mode-icon-btn img {
+      display: block;
+    }
+
   </style>
 </head>
 
@@ -74,261 +93,323 @@
 <body class="bg-teal-950 text-teal-50 min-h-screen">
   <div class="bg-teal-950/75 max-w-7xl mx-auto py-8 px-4">
 
-    <header class="sticky top-0 z-20 bg-teal-950/95 backdrop-blur border-b border-teal-800 mb-4">
-      <a 
-            href="https://biggitools.com" 
-            target="_blank"
-            style="
-              position: fixed;
-              top: 12px;
-              right: 16px;
-              font-size: 12px;
-              color: #cbd5f5;
-              text-decoration: none;
-              background: rgba(2, 6, 23, 0.7);
-              padding: 6px 10px;
-              border-radius: 999px;
-              border: 1px solid rgba(56, 189, 248, 0.4);
-            "
+  <header class="sticky top-0 z-20 bg-teal-950/95 backdrop-blur border-b border-teal-800 mb-4">
+          <a 
+              href="https://biggitools.com" 
+              target="_blank"
+              style="
+                position: fixed;
+                top: 12px;
+                right: 16px;
+                font-size: 12px;
+                color: #cbd5f5;
+                text-decoration: none;
+                background: rgba(2, 6, 23, 0.7);
+                padding: 6px 10px;
+                border-radius: 999px;
+                border: 1px solid rgba(56, 189, 248, 0.4);
+              "
+            >
+              ← Back to BiggiTools
+        </a>   
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col gap-4">
+
+      <!-- Title + collapse button (unchanged) -->
+      <div class="flex items-end my-2">
+        <h1 class="text-5xl font-semibold font-barriecito mx-1">
+          SeaGlass
+        </h1>
+        <h2 class="text-1xl font-semibold font-quicksand mx-4">
+            View and compare your CGATS files
+        </h2>
+
+        <button
+          id="headerToggleButton"
+          type="button"
+          class="text-xs px-2 py-1 mx-12 rounded-full border border-slate-600 bg-slate-800/80 text-slate-100 hover:bg-slate-700/80"
+        >
+          Hide controls
+        </button>
+      </div>
+
+      <!-- Two-column header layout -->
+      <div
+        id="headerControls"
+        class="grid gap-3 md:grid-cols-[1fr_minmax(260px,320px)] items-start"
+      >
+        <!-- LEFT: info panel (mode, legend, debug, inspector) -->
+        <div class="flex flex-col gap-2">
+          <!-- File inputs + stats grid -->
+          <div
+            class="grid gap-3 py-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start"
           >
-            ← Back to BiggiTools
-      </a>
-      <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col gap-4">
-
-        <div class="flex items-end my-1">
-
-            <!-- Title with DynaPuff -->
-            <h1 class="text-5xl font-semibold font-barriecito mx-1">
-              SeaGlass
-            </h1>
-            <h2 class="text-1xl font-semibold font-quicksand mx-4">
-                View and compare your CGATS files
-            </h2>
-            <button
-              id="headerToggleButton"
-              type="button"
-              class="text-xs px-2 py-1 rounded-full border border-slate-600 bg-slate-800/80 text-slate-100 hover:bg-slate-700/80"
-            >
-              Hide controls
-            </button>
-        </div>
-
-        <div id="headerControls" class="flex flex-col gap-3">
-
-        <!-- File inputs + stats to the right -->
-        <div class="grid gaps-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(260px,0.8fr)] items-start">
-
-          <!-- Reference -->
-          <div class="flex flex-col gap-1">
-            <span class="text-sm font-medium">Reference chart (CGATS)</span>
+            <!-- Reference chart -->
+            <div class="flex flex-col gap-1">
+              <span class="text-sm font-medium">Reference chart (CGATS)</span>
               <div class="flex items-center gap-2">
-                  <input
-                    id="refFile"
-                    type="file"
-                    multiple
-                    accept=".txt,.cgats,.cie,.dat"
-                    class="block w-full text-sm text-slate-200
-                          file:mr-4 file:py-2 file:px-4
-                          file:rounded-md file:border-0
-                          file:text-sm file:font-semibold
-                          file:bg-emerald-700 file:text-white
-                          hover:file:bg-emerald-600"
-                  />
-                  <button
-                    id="clearRefButton"
-                    type="button"
-                    class="shrink-0 mx-8 px-2 py-1 text-xs rounded-full border border-slate-600
-                          bg-slate-800/40 text-slate-200 hover:bg-slate-700/80"
-                    title="Clear reference"
-                  >
-                    ✕
-                  </button>
-                </div>
-            <!-- List of all files used in averaged reference -->
-            <div id="refFilesList" class="text-xs text-slate-300 line-clamp-2"></div>
-          </div>
-
-          <!-- Sample -->
-          <div class="flex flex-col gap-1">
-            <span class="text-sm font-medium">Sample chart (CGATS)</span>
-                <div class="flex items-center gap-2">
-                  <input
-                    id="sampleFile"
-                    type="file"
-                    multiple
-                    accept=".txt,.cgats,.cie,.dat"
-                    class="block w-full text-sm text-slate-200
-                          file:mr-4 file:py-2 file:px-4
-                          file:rounded-md file:border-0
-                          file:text-sm file:font-semibold
-                          file:bg-emerald-700 file:text-white
-                          hover:file:bg-emerald-600"
-                  />
-                  <button
-                    id="clearSampleButton"
-                    type="button"
-                    class="shrink-0 mx-8 px-2 py-1 text-xs rounded-full border border-slate-600
-                          bg-slate-800/40 text-slate-200 hover:bg-slate-700/80"
-                    title="Clear sample"
-                  >
-                    ✕
-                  </button>
-                </div>
-            <!-- List of all files used in averaged sample -->
-            <div id="sampleFilesList" class="text-xs text-slate-300 line-clamp-2"></div>
-          </div>
-
-          <!-- Stats mode controls -->
-          <div class="flex flex-col gap-2">
-            <div
-              id="statsPanel"
-              class="min-w-[230px] text-[11px] bg-slate-800/80 border border-slate-700 rounded-lg p-2"
-            >
-              <div class="font-semibold text-slate-100 mb-1 text-xs">
-                ΔE00 statistics
+                <input
+                  id="refFile"
+                  type="file"
+                  multiple
+                  accept=".txt,.cgats,.cie,.dat"
+                  class="block w-full text-sm text-slate-200
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-md file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-emerald-700 file:text-white
+                        hover:file:bg-emerald-600"
+                />
+                <button
+                  id="clearRefButton"
+                  type="button"
+                  class="shrink-0 px-2 py-1 mx-8 text-xs rounded-full border border-slate-600
+                        bg-slate-800/80 text-slate-200 hover:bg-slate-700/80"
+                  title="Clear reference"
+                >
+                  ✕
+                </button>
               </div>
-              <div class="text-[11px] text-slate-300">
-                Load a reference and sample chart to see statistics.
-              </div>
+              <div id="refFilesList" class="text-xs text-slate-300 line-clamp-2"></div>
             </div>
 
-            <!-- View mode controls -->
-            <div
-              id="viewModeControls"
-              class="flex flex-wrap gap-1 justify-end text-xs text-slate-200"
-            >
+            <!-- Sample chart -->
+            <div class="flex flex-col gap-1">
+              <span class="text-sm font-medium">Sample chart (CGATS)</span>
+              <div class="flex items-center gap-2">
+                <input
+                  id="sampleFile"
+                  type="file"
+                  multiple
+                  accept=".txt,.cgats,.cie,.dat"
+                  class="block w-full text-sm text-slate-200
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-md file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-emerald-700 file:text-white
+                        hover:file:bg-emerald-600"
+                />
+                <button
+                  id="clearSampleButton"
+                  type="button"
+                  class="shrink-0 px-2 py-1 mx-8 text-xs rounded-full border border-slate-600
+                        bg-slate-800/80 text-slate-200 hover:bg-slate-700/80"
+                  title="Clear sample"
+                >
+                  ✕
+                </button>
+              </div>
+              <div id="sampleFilesList" class="text-xs text-slate-300 line-clamp-2"></div>
+            </div>
+          </div>
+
+
+
+        </div>
+
+        <!-- RIGHT: controls + overall statistics -->
+        <div class="flex flex-col gap-2">
+
+          <!-- Overall ΔE / repeatability statistics -->
+          <div
+            id="statsPanel"
+            class="mt-1 text-xs text-slate-200 border border-slate-700 bg-slate-900/60 rounded-lg p-2"
+          >
+            <div class="font-semibold text-slate-100 mb-1 text-xs">
+              ΔE00 statistics
+            </div>
+            <div class="text-[11px] text-slate-300">
+              Load a reference and sample chart to see statistics.
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Mode control area -->
+        <div
+          id="modeControls"
+          class="flex gap-3 md:grid-cols-[1fr_minmax(100px,260px)] items-start"
+        >
+                  <!-- View mode controls (icon strip) -->
+          <div
+            id="viewModeControls"
+            class="flex flex-col items-center gap-2 text-xs text-slate-200"
+          >
+            <!-- Icon buttons row -->
+            <div class="flex items-center justify-center gap-1.5">
+              <!-- Reference colors -->
               <button
                 type="button"
-                class="view-mode-btn px-2 py-1 rounded-full border border-slate-600 bg-slate-800/80 hover:bg-slate-700/80"
-                data-mode="deltaE"
-              >
-                ΔE heatmap
-              </button>
-              <button
-                type="button"
-                class="view-mode-btn px-2 py-1 rounded-full border border-slate-600 bg-slate-800/80 hover:bg-slate-700/80"
-                data-mode="deltaLab"
-              >
-                ΔLab colors
-              </button>
-              <button
-                type="button"
-                class="view-mode-btn px-2 py-1 rounded-full border border-slate-600 bg-slate-800/80 hover:bg-slate-700/80"
+                class="view-mode-btn mode-icon-btn w-10 h-10 rounded-xl border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform"
                 data-mode="refColors"
               >
-                Reference colors
+                <img
+                  src="SeaGlass/assets/icon_Reference.png"
+                  alt="Reference colors"
+                  class="max-w-[70%] max-h-[70%]"
+                />
               </button>
+
+              <!-- Sample colors -->
               <button
                 type="button"
-                class="view-mode-btn px-2 py-1 rounded-full border border-slate-600 bg-slate-800/80 hover:bg-slate-700/80"
+                class="view-mode-btn mode-icon-btn w-10 h-10 rounded-xl border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform"
                 data-mode="sampleColors"
               >
-                Sample colors
+                <img
+                  src="SeaGlass/assets/icon_Sample.png"
+                  alt="Sample colors"
+                  class="max-w-[70%] max-h-[70%]"
+                />
               </button>
+
+              <!-- ΔE heatmap -->
               <button
                 type="button"
-                class="view-mode-btn px-2 py-1 rounded-full border border-slate-600 bg-slate-800/80 hover:bg-slate-700/80"
+                class="view-mode-btn mode-icon-btn w-10 h-10 rounded-xl border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform"
+                data-mode="deltaE"
+              >
+                <img
+                  src="SeaGlass/assets/icon_DeltaE.png"
+                  alt="ΔE heatmap"
+                  class="max-w-[70%] max-h-[70%]"
+                />
+              </button>
+
+              <!-- ΔLab (no icon provided → text fallback) -->
+              <button
+                type="button"
+                class="view-mode-btn mode-icon-btn w-10 h-10 rounded-xl border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform"
+                data-mode="deltaLab"
+              >
+                <img
+                  src="SeaGlass/assets/icon_DeltaLab.png"
+                  alt="ΔLab coloring"
+                  class="max-w-[70%] max-h-[70%]"
+                />
+              </button>
+
+              <!-- Index / channels -->
+              <button
+                type="button"
+                class="view-mode-btn mode-icon-btn w-10 h-10 rounded-xl border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform"
                 data-mode="index"
               >
-                Index values
+                <img
+                  src="SeaGlass/assets/icon_Channels.png"
+                  alt="Index values"
+                  class="max-w-[70%] max-h-[70%]"
+                />
               </button>
-              <!-- NEW: repeatability modes -->
+
+              <!-- Reference repeatability -->
               <button
                 type="button"
-                class="view-mode-btn px-2 py-1 rounded-full border border-slate-600 bg-slate-800/80 hover:bg-slate-700/80"
+                class="view-mode-btn mode-icon-btn w-10 h-10 rounded-xl border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform"
                 data-mode="refRepeat"
               >
-                Ref repeatability
+                <img
+                  src="SeaGlass/assets/icon_ReferenceRepeatability.png"
+                  alt="Reference repeatability"
+                  class="max-w-[70%] max-h-[70%]"
+                />
               </button>
+
+              <!-- Sample repeatability -->
               <button
                 type="button"
-                class="view-mode-btn px-2 py-1 rounded-full border border-slate-600 bg-slate-800/80 hover:bg-slate-700/80"
+                class="view-mode-btn mode-icon-btn w-10 h-10 rounded-xl border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform"
                 data-mode="sampleRepeat"
               >
-                Sample repeatability
+                <img
+                  src="SeaGlass/assets/icon_SampleRepeatability.png"
+                  alt="Sample repeatability"
+                  class="max-w-[70%] max-h-[70%]"
+                />
               </button>
             </div>
 
-            <!-- Index-mode extra controls -->
+            <!-- Caption for currently-selected mode -->
             <div
-              id="indexControls"
-              class="hidden flex flex-col gap-1 text-xs text-slate-200 mt-1"
+              id="viewModeCaption"
+              class="mt-1 text-[11px] text-slate-300 h-4 text-center"
             >
-              <label class="flex items-center gap-2">
-                <span>Index channel:</span>
-                <select
-                  id="indexChannelSelect"
-                  class="bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-xs text-slate-100"
-                ></select>
-              </label>
-              <div
-                id="indexControlsHint"
-                class="text-[10px] text-slate-400"
-              >
-                Select which CMYK / nCLR channel to use for patch coloring.
+              Reference colors
+            </div>
+
+                      <!-- Index controls -->
+          <div
+            id="indexControls"
+            class="hidden flex-col items-center justify-end gap-2 text-xs text-slate-200"
+          >
+            <label class="flex items-center gap-1">
+              <span class="text-[11px] text-slate-300">Index channel:</span>
+              <select
+                id="indexChannelSelect"
+                class="bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-xs"
+              ></select>
+            </label>
+            <span id="indexControlsHint" class="text-[11px] text-slate-400">
+              Select an ink/channel to visualize its 0–100% ramp.
+            </span>
+          </div>
+          </div>
+
+          <!-- Mode + summary -->
+          <div class="flex flex-wrap items-start mx-4 gap-3 text-sm text-slate-200">
+            <span>
+              Mode:
+              <span id="modeLabel" class="font-semibold text-emerald-400">
+                Color (reference chart)
+              </span>
+            </span>
+
+            <span id="summary" class="text-slate-400"></span>
+          </div>
+
+          <!-- Mode legend / explanation -->
+          <div id="modeLegend" class="text-xs text-slate-300">
+            Colors show the reference patch color (L*a*b*). Load a sample chart and switch to ΔE mode to see color differences.
+          </div>
+
+
+
+        </div>
+
+                  <!-- Heatmap legend -->
+          <div
+            id="heatmapLegend"
+            class="hidden flex items-center gap-3 text-[11px] text-slate-300"
+          >
+            <span id="heatmapLegendLabel">ΔE00 scale</span>
+
+            <div class="flex-1 flex flex-col gap-1">
+              <div class="h-2 w-full rounded bg-gradient-to-r from-emerald-400 via-yellow-300 to-red-500"></div>
+              <div class="flex justify-between text-[10px] text-slate-400 w-full">
+                <span>0</span>
+                <span>1</span>
+                <span>3</span>
+                <span>5+</span>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Mode + summary -->
-        <div class="flex flex-wrap items-center gap-4 text-sm text-slate-200">
-              <div class="flex">
-          
-                  <span>
-                    Mode:
-                    <span id="modeLabel" class="font-semibold text-emerald-400 px-1">
-                      Color (reference chart)
-                    </span>
-                  </span>
-
-                  <span id="summary" class="text-slate-400"></span>
-
-              </div>
-
-
-        </div>
-
-        <!-- Selected patch details -->
-        <div
-          id="patchDetailsPanel"
-          class="hidden mt-1 text-xs text-slate-200 border border-slate-700 bg-slate-900/60 rounded-lg p-2"
-        >
-          <div class="font-semibold text-slate-100 mb-1 text-xs">
-            Selected patch
-          </div>
-          <div class="text-[11px] text-slate-300">
-            Click a patch in the chart to see detailed values.
-          </div>
-        </div>
-
-        <div class="flex">
-        <!-- Debug toggle + panel -->
-        <div class="mb-1 text-xs text-slate-300">
-          <label class="inline-flex items-center gap-2 cursor-pointer select-none">
-            <input
-              id="debugToggle"
-              type="checkbox"
-              class="h-3 w-3 rounded border-slate-500 bg-teal-950 text-emerald-600"
-            />
-            <span>Show layout debug info</span>
-          </label>
-
+              <!-- Patch inspector -->
           <div
-            id="debugPanel"
-            class="hidden mt-2 rounded-md border border-slate-700 bg-slate-900/60 px-2 py-2"
+            id="patchDetailsPanel"
+            class="hidden mt-1 text-xs text-slate-200 border border-slate-700 bg-slate-900/60 rounded-lg p-2"
           >
-            <pre
-              id="debugText"
-              class="whitespace-pre-wrap text-[10px] leading-snug text-slate-200"
-            ></pre>
+            <div class="font-semibold text-slate-100 mb-1 text-xs">
+              Selected patch
+            </div>
+            <div class="text-[11px] text-slate-300">
+              Click on a patch in the chart to inspect its Lab values, ΔE, index channels, repeatability, and more.
+            </div>
           </div>
-        </div>
 
-        </div>
-      </div>
-      </div>
-    </header>
+    </div>
+  </header>
+
 
     <main class="flex-1 overflow-auto">
       <div class="max-w-10xl mx-auto px-4 py-4">

@@ -18,10 +18,21 @@ let sampleFileNames = [];
 
 let viewMode = "refColors";      // "deltaE" | "deltaLab" | "refColors" | "sampleColors" | "index"
 let selectedIndexField = null;   // e.g. "CMYK_C", "7CLR_1"
+let selectedPatchElement = null;
 
 // Index-channel metadata (from LGOMCCHANNELxx header lines)
 const indexFieldLabMap = {};     // key: channel name (e.g. "7CLR_1") → { L, a, b }
 const indexFieldInkNameMap = {}; // key: channel name          → "Cyan", etc.
+
+const MODE_CAPTIONS = {
+  refColors: "Reference colors",
+  sampleColors: "Sample colors",
+  deltaE: "ΔE heatmap",
+  deltaLab: "ΔLab encoded difference",
+  index: "Index channel values",
+  refRepeat: "Reference repeatability",
+  sampleRepeat: "Sample repeatability",
+};
 
 
 // -----------------------------------------------------------------------------
@@ -34,10 +45,6 @@ const modeLabel        = document.getElementById("modeLabel");
 const summaryEl        = document.getElementById("summary");
 const chartContainer   = document.getElementById("chartContainer");
 const statsPanel       = document.getElementById("statsPanel");
-
-const debugToggle      = document.getElementById("debugToggle");
-const debugPanel       = document.getElementById("debugPanel");
-const debugText        = document.getElementById("debugText");
 
 const refFilesListEl    = document.getElementById("refFilesList");
 const sampleFilesListEl = document.getElementById("sampleFilesList");
@@ -52,6 +59,10 @@ const headerToggleButton = document.getElementById("headerToggleButton");
 const headerControls     = document.getElementById("headerControls");
 const clearRefButton     = document.getElementById("clearRefButton");
 const clearSampleButton  = document.getElementById("clearSampleButton");
+const modeLegend = document.getElementById("modeLegend");
+const heatmapLegend      = document.getElementById("heatmapLegend");
+const heatmapLegendLabel = document.getElementById("heatmapLegendLabel");
+const viewModeCaption  = document.getElementById("viewModeCaption");
 
 // -----------------------------------------------------------------------------
 // Header collapse / expand
@@ -131,21 +142,6 @@ if (clearSampleButton) {
 
 
 // -----------------------------------------------------------------------------
-// DEBUG TOGGLE
-// -----------------------------------------------------------------------------
-
-if (debugToggle) {
-  debugToggle.addEventListener("change", () => {
-    if (debugToggle.checked) {
-      debugPanel.classList.remove("hidden");
-    } else {
-      debugPanel.classList.add("hidden");
-    }
-    updateView();
-  });
-}
-
-// -----------------------------------------------------------------------------
 // VIEW MODE BUTTONS
 // -----------------------------------------------------------------------------
 
@@ -180,20 +176,35 @@ function setViewMode(mode) {
           "bg-emerald-600/80",
           "text-emerald-50",
           "font-medium",
-          "shadow-sm"
+          "shadow-sm",
+          "scale-110",
+          "border-2"
         );
-        btn.classList.remove("border-slate-600", "bg-slate-800/80");
+        btn.classList.remove(
+          "border-slate-600",
+          "bg-slate-800/80"
+        );
       } else {
         btn.classList.remove(
           "border-emerald-500",
           "bg-emerald-600/80",
           "text-emerald-50",
           "font-medium",
-          "shadow-sm"
+          "shadow-sm",
+          "scale-110",
+          "border-2"
         );
-        btn.classList.add("border-slate-600", "bg-slate-800/80");
+        btn.classList.add(
+          "border-slate-600",
+          "bg-slate-800/80"
+        );
       }
     });
+  }
+
+  // Update small caption under icons
+  if (viewModeCaption) {
+    viewModeCaption.textContent = MODE_CAPTIONS[mode] || "";
   }
 
   // Index-mode UI
@@ -208,6 +219,7 @@ function setViewMode(mode) {
 
   updateView();
 }
+
 
 // Collapse patch inspector when clicking anywhere outside patches or the inspector
 document.addEventListener("click", (e) => {
@@ -248,7 +260,12 @@ if (refInput) {
         refLayoutMeta = layoutMeta;
         refFileNames = fileNames;
         if (refFilesListEl) {
-          refFilesListEl.textContent = fileNames.join(", ");
+          if (fileNames.length === 1) {
+              refFilesListEl.textContent = `1 file loaded: ${fileNames[0]}`;
+            } else {
+              refFilesListEl.textContent =
+                `${fileNames.length} files loaded (averaged): ${fileNames.join(", ")}`;
+            }         
         }
 
         if (!viewMode) {
@@ -275,7 +292,12 @@ if (sampleInput) {
         sampleLayoutMeta = layoutMeta;
         sampleFileNames = fileNames;
         if (sampleFilesListEl) {
-          sampleFilesListEl.textContent = fileNames.join(", ");
+          if (fileNames.length === 1) {
+            sampleFilesListEl.textContent = `1 file loaded: ${fileNames[0]}`;
+          } else {
+            sampleFilesListEl.textContent =
+              `${fileNames.length} files loaded (averaged): ${fileNames.join(", ")}`;
+          }
         }
 
         // Default to ΔE view when sample is loaded, unless user already chose something else
@@ -302,7 +324,6 @@ function updateView() {
   if (!refPatches) {
     modeLabel.textContent = "Waiting for reference chart…";
     summaryEl.textContent = "";
-    if (debugText) debugText.textContent = "";
     return;
   }
 
@@ -579,36 +600,99 @@ function updateView() {
   const showRefRepeat    = viewMode === "refRepeat";
   const showSampleRepeat = viewMode === "sampleRepeat";
   
-  const refCount    = refFileNames.length || 1;
-  const sampleCount = hasSample ? (sampleFileNames.length || 1) : 0;
+  const refCount    = refFileNames ? refFileNames.length : (refPatches ? 1 : 0);
+  const sampleCount = sampleFileNames ? sampleFileNames.length : (samplePatches ? 1 : 0);
 
   // Mode label + summary
   if (!hasSample) {
     modeLabel.textContent = "Color (reference chart)";
     summaryEl.textContent = `Patches: ${patchCount} · Reference files: ${refCount} · No sample loaded`;
+      if (modeLegend) {
+      modeLegend.textContent =
+        "Each patch shows the reference L*a*b* color. Load a sample chart to enable comparison modes.";
+      }
   } else if (showDelta) {
     modeLabel.textContent = "ΔE2000 heatmap (reference vs sample)";
     summaryEl.textContent = `ΔE heatmap · Ref files: ${refCount} · Sample files: ${sampleCount}`;
+      if (modeLegend) {
+      modeLegend.textContent =
+        "Patch color and number show ΔE00 between reference and sample (0 ≈ perfect match, 1–2 ≈ slight, 3+ clearly visible).";
+      }
   } else if (showDeltaLab) {
     modeLabel.textContent = "ΔLab encoded as Lab→RGB (sample − reference)";
     summaryEl.textContent = `ΔLab mode · L' = ΔL + 70; a' = Δa × 20; b' = Δb × 20 · Ref files: ${refCount} · Sample files: ${sampleCount}`;
+      if (modeLegend) {
+        modeLegend.textContent =
+          "Colors encode ΔL, Δa, Δb as a pseudo-Lab; use this to see direction of the color shift, not just the magnitude.";
+      }
   } else if (showSampleColor) {
     modeLabel.textContent = "Sample colors";
     summaryEl.textContent = `Showing averaged sample colors (text = sample ID) · Ref files: ${refCount} · Sample files: ${sampleCount}`;
+        if (modeLegend) {
+          modeLegend.textContent =
+            "Each patch shows the sample L*a*b* color. Use ΔE or ΔLab view to see differences vs reference.";
+        }
   } else if (showIndexValues) {
     modeLabel.textContent = "Index values";
     const which = selectedIndexField ? `Channel: ${selectedIndexField}` : "No index channel available";
     summaryEl.textContent = `${which} · Ref files: ${refCount} · Sample files: ${sampleCount}`;
-    } else if (showRefRepeat) {
+      if (modeLegend) {
+        modeLegend.textContent =
+          "Colors show the ink/channel value (0–100%) for the selected index; select the channel above to change the view.";
+      }
+  } else if (showRefRepeat) {
     modeLabel.textContent = "Repeatability heatmap (reference)";
     summaryEl.textContent = `ΔE00 vs mean per patch · Reference files: ${refCount}`;
+      if (modeLegend) {
+        modeLegend.textContent =
+          "Patch color shows repeatability of the reference set (ΔE00 vs mean) – high values indicate unstable patches.";
+      }
   } else if (showSampleRepeat) {
     modeLabel.textContent = "Repeatability heatmap (sample)";
     summaryEl.textContent = `ΔE00 vs mean per patch · Sample files: ${sampleCount}`;
+        if (modeLegend) {
+          modeLegend.textContent =
+            "Patch color shows repeatability of the sample set (ΔE00 vs mean) – high values indicate unstable patches.";
+        }
   } else {
     modeLabel.textContent = "Color (reference chart)";
     summaryEl.textContent = `Reference colors · Ref files: ${refCount} · Sample files: ${sampleCount}`;
+        if (modeLegend) {
+          modeLegend.textContent =
+            "Showing reference L*a*b* colors. Use the buttons above to switch between comparison and analysis modes.";
+        }
   }
+
+  // Default: hide
+  if (heatmapLegend) {
+    heatmapLegend.classList.add("hidden");
+  }
+
+  if (showDelta) {
+    // ΔE ref vs sample
+    if (heatmapLegend) {
+      heatmapLegend.classList.remove("hidden");
+    }
+    if (heatmapLegendLabel) {
+      heatmapLegendLabel.textContent = "ΔE00 (ref vs sample)";
+    }
+  } else if (showRefRepeat) {
+    if (heatmapLegend) {
+      heatmapLegend.classList.remove("hidden");
+    }
+    if (heatmapLegendLabel) {
+      heatmapLegendLabel.textContent = "Repeatability ΔE00 (reference set)";
+    }
+  } else if (showSampleRepeat) {
+    if (heatmapLegend) {
+      heatmapLegend.classList.remove("hidden");
+    }
+    if (heatmapLegendLabel) {
+      heatmapLegendLabel.textContent = "Repeatability ΔE00 (sample set)";
+    }
+  }
+  // for other modes (ref color, sample color, index, ΔLab) the legend stays hidden
+
 
   // ---------------------------------------------------------------------------
   // Build page grid(s)
@@ -760,7 +844,6 @@ function updateView() {
     chartContainer.appendChild(wrapper);
   });
 
-  updateDebugPanel(layout, refPatches, deltaMap);
 }
 
 // -----------------------------------------------------------------------------
@@ -953,12 +1036,7 @@ function handlePatchClick(id) {
           ${id}
         </div>
 
-        <div class="mt-1 border-t border-slate-700 pt-1">
-          <div class="font-semibold text-slate-200 mb-1">Index values</div>
-          <div class="space-y-0.5">
-            ${indexRowsHtml}
-          </div>
-        </div>
+
 
         <div class="mt-1 border-t border-slate-700 pt-1">
           <div class="font-semibold text-slate-200 mb-1">Reference (LabCh)</div>
@@ -1007,11 +1085,11 @@ function handlePatchClick(id) {
       <div class="flex flex-col items-center justify-center gap-3">
         <div class="flex gap-4 items-center">
           <div class="flex flex-col items-center gap-1">
-            <div class="w-12 h-12 rounded border border-slate-600" style="background:${refCss};"></div>
+            <div class="w-20 h-12 rounded border border-slate-600" style="background:${refCss};"></div>
             <div class="text-[10px] text-slate-300">Reference</div>
           </div>
           <div class="flex flex-col items-center gap-1">
-            <div class="w-12 h-12 rounded border border-slate-600" style="background:${sampleCss};"></div>
+            <div class="w-20 h-12 rounded border border-slate-600" style="background:${sampleCss};"></div>
             <div class="text-[10px] text-slate-300">Sample</div>
           </div>
         </div>
@@ -1094,81 +1172,6 @@ function refreshIndexControls() {
   }
 }
 
-// -----------------------------------------------------------------------------
-// DEBUG PANEL HELPER
-// -----------------------------------------------------------------------------
-
-function updateDebugPanel(layout, patchMap, deltaMap) {
-  if (!debugToggle || !debugToggle.checked || !debugText) {
-    if (debugText) debugText.textContent = "";
-    return;
-  }
-
-  if (!layout || !patchMap) {
-    debugText.textContent = "No layout information available yet.";
-    return;
-  }
-
-  const {
-    numberOfStrips,
-    totalRows,
-    rowsPerPage,
-    maxCol,
-    maxDelta,
-    indexFields,
-  } = layout;
-
-  const ids = Object.keys(patchMap);
-
-  const pageStats = new Map();
-  ids.forEach((id) => {
-    const p = patchMap[id];
-    const page = typeof p.page === "number" ? p.page : 0;
-
-    if (!pageStats.has(page)) {
-      pageStats.set(page, {
-        count: 0,
-        minRow: Infinity,
-        maxRow: -Infinity,
-        minCol: Infinity,
-        maxCol: -Infinity,
-      });
-    }
-    const st = pageStats.get(page);
-    st.count++;
-    if (typeof p.row === "number") {
-      st.minRow = Math.min(st.minRow, p.row);
-      st.maxRow = Math.max(st.maxRow, p.row);
-    }
-    if (typeof p.col === "number") {
-      st.minCol = Math.min(st.minCol, p.col);
-      st.maxCol = Math.max(st.maxCol, p.col);
-    }
-  });
-
-  let txt = "";
-  txt += "=== CGATS Layout Debug ===\n";
-  txt += `NumberOfStrips (pages): ${numberOfStrips}\n`;
-  txt += `LGOROWLENGTH (total rows): ${totalRows}\n`;
-  txt += `rowsPerPage: ${rowsPerPage}\n`;
-  txt += `maxCol: ${maxCol}\n`;
-  if (typeof maxDelta === "number") {
-    txt += `max ΔE00: ${maxDelta.toFixed(3)}\n`;
-  }
-  if (indexFields && indexFields.length) {
-    txt += `Index fields: ${indexFields.join(", ")}\n`;
-  }
-  txt += `Total patches: ${ids.length}\n\n`;
-
-  txt += "Per-page stats:\n";
-  [...pageStats.entries()]
-    .sort((a, b) => a[0] - b[0])
-    .forEach(([page, st]) => {
-      txt += `  Page ${page}: patches=${st.count}, row=[${st.minRow}..${st.maxRow}], col=[${st.minCol}..${st.maxCol}]\n`;
-    });
-
-  debugText.textContent = txt;
-}
 
 // -----------------------------------------------------------------------------
 // LAYOUT FALLBACK (if header missing)
@@ -1678,7 +1681,16 @@ function createPatchDiv({ id, label, bgColor, text, extraInfo, pageIndex, row, c
   }
 
   div.addEventListener("click", () => {
+    // highlight selected patch
+    if (selectedPatchElement && selectedPatchElement !== div) {
+      selectedPatchElement.classList.remove("patch-selected");
+    }
+    selectedPatchElement = div;
+    div.classList.add("patch-selected");
+
+    // existing behavior: open / update inspector
     handlePatchClick(id);
+    e.stopPropagation();
   });
 
   return div;
