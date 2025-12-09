@@ -599,9 +599,11 @@ function updateView() {
   const showIndexValues = viewMode === "index";
   const showRefRepeat    = viewMode === "refRepeat";
   const showSampleRepeat = viewMode === "sampleRepeat";
-  
   const refCount    = refFileNames ? refFileNames.length : (refPatches ? 1 : 0);
   const sampleCount = sampleFileNames ? sampleFileNames.length : (samplePatches ? 1 : 0);
+  const isIndexMode = viewMode === "index";
+  const isTACMode   = isIndexMode && selectedIndexField === "TAC";
+
 
   // Mode label + summary
   if (!hasSample) {
@@ -723,11 +725,15 @@ function updateView() {
       return ca - cb;
     });
 
+    // Use layout's maxCol and rowsPerPage for grid sizing
+    const pageMaxCol = maxCol;
+    const pageRowsPerPage = rowsPerPage;
+
     const wrapper = document.createElement("div");
-    wrapper.className = "flex flex-col gap-2 mb-8";
+    wrapper.className = "flex flex-col gap-2 mb-8 w-full";
 
     const label = document.createElement("div");
-    label.className = "text-xs font-semibold text-slate-300";
+    label.className = "text-xs font-semibold text-slate-300 text-center";
     label.textContent = `Page ${pageIndex + 1} of ${numberOfStrips}`;
     wrapper.appendChild(label);
 
@@ -735,15 +741,57 @@ function updateView() {
     frame.className = "w-full overflow-x-auto";
     wrapper.appendChild(frame);
 
-    const grid = document.createElement("div");
-    grid.className = "page-grid inline-grid gap-1 bg-slate-800 p-2 rounded-lg mx-auto";
+    const centeringDiv = document.createElement("div");
+    centeringDiv.style.textAlign = "center";
+    centeringDiv.style.minWidth = "100%";
+    frame.appendChild(centeringDiv);
 
-    grid.style.gridTemplateColumns = `repeat(${maxCol}, ${PATCH_SIZE}px)`;
-    grid.style.gridTemplateRows = `repeat(${rowsPerPage}, ${PATCH_SIZE}px)`;
+    const grid = document.createElement("div");
+    grid.className = "page-grid inline-grid gap-1 bg-slate-800 p-2 rounded-lg";
+    grid.style.textAlign = "left";
+    grid.style.width = "fit-content";
+
+    grid.style.gridTemplateColumns = `repeat(${pageMaxCol}, ${PATCH_SIZE}px)`;
+    grid.style.gridTemplateRows = `repeat(${pageRowsPerPage}, ${PATCH_SIZE}px)`;
     grid.style.gridAutoColumns = `${PATCH_SIZE}px`;
     grid.style.gridAutoRows = `${PATCH_SIZE}px`;
 
-    frame.appendChild(grid);
+    centeringDiv.appendChild(grid);
+
+
+// 🔹 TAC heatmap data (for index mode with TAC selected)
+let tacMap = null;
+let tacMax = 0;
+
+if (isTACMode && layout && layout.indexFields && layout.indexFields.length) {
+  tacMap = {};
+  let maxVal = 0;
+
+  allIds.forEach((id) => {
+    const p = refPatches[id];
+    if (!p || !p.indexValues) return;
+
+    let sum = 0;
+    layout.indexFields.forEach((field) => {
+      const v = p.indexValues[field];
+      if (typeof v === "number" && !Number.isNaN(v)) {
+        sum += v;
+      }
+    });
+
+    tacMap[id] = sum;
+    if (sum > maxVal) maxVal = sum;
+  });
+
+  tacMax = maxVal;
+}
+
+
+
+
+
+
+
 
     pagePatches.forEach(({ id, patch }) => {
       const rp = patch;
@@ -790,7 +838,15 @@ function updateView() {
         bgColor = rgbToCSS(rgb);
         //text = sp.sampleId != null ? String(sp.sampleId) : id;
         extraInfo = `Sample L*a*b*: ${sp.L.toFixed(1)}, ${sp.a.toFixed(1)}, ${sp.b.toFixed(1)}`;
-      } else if (showIndexValues && selectedIndexField) {
+      } else if (showIndexValues && isTACMode && tacMap && tacMap[id] != null) {
+  // 🔹 TAC heatmap per patch
+  const tacVal = tacMap[id]; // e.g. 260 => 260%
+  const maxVal = tacMax || (layout.indexFields.length * 100) || 100;
+
+  bgColor = deltaEToHeatColor(tacVal, maxVal); // reuse heatmap gradient
+  text = tacVal.toFixed(0);                    // show TAC as integer %
+  extraInfo = `TAC: ${tacVal.toFixed(0)}% (sum of ${layout.indexFields.length} channels)`;
+} else if (showIndexValues && selectedIndexField) {
         const pIndexSource =
           sp && sp.indexValues && sp.indexValues[selectedIndexField] != null
             ? sp
@@ -1160,6 +1216,11 @@ function refreshIndexControls() {
     indexChannelSelect.appendChild(opt);
   });
 
+  //   // 🔹 NEW: TAC synthetic option
+  const tacOpt = document.createElement("option");
+  tacOpt.value = "TAC";
+  tacOpt.textContent = "TAC (Total Area Coverage)";
+  indexChannelSelect.appendChild(tacOpt);
 
   if (!selectedIndexField || !fields.includes(selectedIndexField)) {
     selectedIndexField = fields[0];
@@ -1576,19 +1637,17 @@ function parseCgats(text) {
 
   const totalPatches = rows.length;
 
+  if (numberOfStrips == null || numberOfStrips <= 0) {
+    numberOfStrips = 1;
+  }
+
+  // LGOROWLENGTH represents the total number of rows across all strips
   let totalRows = lgoRowLength;
   if (totalRows == null || totalRows <= 0) {
     totalRows = totalPatches;
   }
 
-  if (numberOfStrips == null || numberOfStrips <= 0) {
-    numberOfStrips = 1;
-  }
-
-  const rowsPerPage = Math.max(
-    1,
-    Math.round(totalRows / numberOfStrips)
-  );
+  const rowsPerPage = Math.ceil(totalRows / numberOfStrips);
 
   const maxCol = totalPatches && totalRows
     ? Math.max(1, Math.floor(totalPatches / totalRows))
@@ -1892,8 +1951,11 @@ function indexValueToRGB(channelName, value01) {
 // -----------------------------------------------------------------------------
 
 function deltaEToHeatColor(dE, maxDelta) {
-  const colorCapped = Math.min(dE, 5);
-  const hueT = colorCapped / 5;
+  // For TAC or other high-range values, use the full maxDelta range
+  // For ΔE values, cap the color gradient at 5
+  const colorMax = maxDelta > 50 ? maxDelta : 5;
+  const colorCapped = Math.min(dE, colorMax);
+  const hueT = colorCapped / colorMax;
 
   let r, g, b;
 
