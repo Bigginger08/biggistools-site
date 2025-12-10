@@ -149,6 +149,10 @@ if (viewModeControls) {
   viewModeControls.addEventListener("click", (e) => {
     const btn = e.target.closest(".view-mode-btn");
     if (!btn) return;
+
+    // Don't allow clicking disabled buttons
+    if (btn.disabled || btn.classList.contains("opacity-30")) return;
+
     const mode = btn.dataset.mode;
     if (!mode) return;
     setViewMode(mode);
@@ -218,6 +222,32 @@ function setViewMode(mode) {
   }
 
   updateView();
+}
+
+// Update button states based on whether sample is loaded
+function updateModeButtonStates(hasSample) {
+  if (!viewModeControls) return;
+
+  const buttons = viewModeControls.querySelectorAll(".view-mode-btn");
+  const sampleRequiredModes = ["sampleColors", "deltaE", "deltaLab", "sampleRepeat"];
+
+  buttons.forEach((btn) => {
+    const mode = btn.dataset.mode;
+
+    if (sampleRequiredModes.includes(mode)) {
+      if (!hasSample) {
+        // Disable and grey out
+        btn.disabled = true;
+        btn.classList.add("opacity-30", "cursor-not-allowed", "pointer-events-none");
+        btn.classList.remove("hover:bg-slate-700/80");
+      } else {
+        // Enable
+        btn.disabled = false;
+        btn.classList.remove("opacity-30", "cursor-not-allowed", "pointer-events-none");
+        btn.classList.add("hover:bg-slate-700/80");
+      }
+    }
+  });
 }
 
 
@@ -328,6 +358,9 @@ function updateView() {
   }
 
   const hasSample = !!samplePatches;
+
+  // Update mode button states based on sample availability
+  updateModeButtonStates(hasSample);
 
   // Compute ΔE map + stats when sample present
   let deltaMap = null;
@@ -591,8 +624,6 @@ function updateView() {
     }
   }
 
-
-
   const showDelta       = hasSample && deltaMap && viewMode === "deltaE";
   const showDeltaLab    = hasSample && viewMode === "deltaLab";
   const showSampleColor = hasSample && viewMode === "sampleColors";
@@ -603,6 +634,73 @@ function updateView() {
   const sampleCount = sampleFileNames ? sampleFileNames.length : (samplePatches ? 1 : 0);
   const isIndexMode = viewMode === "index";
   const isTACMode   = isIndexMode && selectedIndexField === "TAC";
+
+  // 🔹 TAC heatmap data (for index mode with TAC selected)
+  let tacMap = null;
+  let tacMax = 0;
+  let tacMaxPatchId = null;
+
+  if (isTACMode && layout && layout.indexFields && layout.indexFields.length) {
+    tacMap = {};
+    let maxVal = 0;
+    let maxPatchId = null;
+
+    allIds.forEach((id) => {
+      const p = refPatches[id];
+      if (!p || !p.indexValues) return;
+
+      let sum = 0;
+      layout.indexFields.forEach((field) => {
+        const v = p.indexValues[field];
+        if (typeof v === "number" && !Number.isNaN(v)) {
+          sum += v;
+        }
+      });
+
+      tacMap[id] = sum;
+      if (sum > maxVal) {
+        maxVal = sum;
+        maxPatchId = id;
+      }
+    });
+
+    tacMax = maxVal;
+    tacMaxPatchId = maxPatchId;
+
+    // Display TAC statistics in the panel
+    if (tacMaxPatchId && refPatches[tacMaxPatchId] && statsPanel) {
+      const maxPatch = refPatches[tacMaxPatchId];
+      const page = (maxPatch.page != null ? maxPatch.page : 0) + 1;
+      const row = maxPatch.row != null ? maxPatch.row : "–";
+      const col = maxPatch.col != null ? maxPatch.col : "–";
+
+      statsPanel.innerHTML = `
+        <div class="font-semibold text-slate-100 mb-1 text-xs">
+          TAC Statistics
+        </div>
+        <table class="w-full text-[11px] text-slate-100 border-collapse">
+          <tbody>
+            <tr>
+              <td class="pr-2 text-slate-400">Max TAC</td>
+              <td class="text-right">${tacMax.toFixed(0)}%</td>
+            </tr>
+            <tr>
+              <td class="pr-2 text-slate-400">Patch ID</td>
+              <td class="text-right">${tacMaxPatchId}</td>
+            </tr>
+            <tr>
+              <td class="pr-2 text-slate-400">Location</td>
+              <td class="text-right">Page ${page}, Row ${row}, Col ${col}</td>
+            </tr>
+            <tr>
+              <td class="pr-2 text-slate-400">Channels</td>
+              <td class="text-right">${layout.indexFields.length}</td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+    }
+  }
 
 
   // Mode label + summary
@@ -759,37 +857,6 @@ function updateView() {
     centeringDiv.appendChild(grid);
 
 
-// 🔹 TAC heatmap data (for index mode with TAC selected)
-let tacMap = null;
-let tacMax = 0;
-
-if (isTACMode && layout && layout.indexFields && layout.indexFields.length) {
-  tacMap = {};
-  let maxVal = 0;
-
-  allIds.forEach((id) => {
-    const p = refPatches[id];
-    if (!p || !p.indexValues) return;
-
-    let sum = 0;
-    layout.indexFields.forEach((field) => {
-      const v = p.indexValues[field];
-      if (typeof v === "number" && !Number.isNaN(v)) {
-        sum += v;
-      }
-    });
-
-    tacMap[id] = sum;
-    if (sum > maxVal) maxVal = sum;
-  });
-
-  tacMax = maxVal;
-}
-
-
-
-
-
 
 
 
@@ -843,8 +910,8 @@ if (isTACMode && layout && layout.indexFields && layout.indexFields.length) {
   const tacVal = tacMap[id]; // e.g. 260 => 260%
   const maxVal = tacMax || (layout.indexFields.length * 100) || 100;
 
-  bgColor = deltaEToHeatColor(tacVal, maxVal); // reuse heatmap gradient
-  text = tacVal.toFixed(0);                    // show TAC as integer %
+  bgColor = tacValueToColor(tacVal, maxVal); // white to emerald-700 gradient
+  text = tacVal.toFixed(0);                  // show TAC as integer %
   extraInfo = `TAC: ${tacVal.toFixed(0)}% (sum of ${layout.indexFields.length} channels)`;
 } else if (showIndexValues && selectedIndexField) {
         const pIndexSource =
@@ -964,6 +1031,32 @@ function handlePatchClick(id) {
     v == null || Number.isNaN(v) ? "–" : v.toFixed(digits);
   const fmtInt = (v) =>
     v == null || Number.isNaN(v) ? "–" : v.toFixed(0);
+
+  // --- TAC Calculation -------------------------------------------------------
+  let refTAC = null;
+  let sampleTAC = null;
+
+  if (ref.indexValues && channels.length > 0) {
+    let sum = 0;
+    channels.forEach((field) => {
+      const v = ref.indexValues[field];
+      if (typeof v === "number" && !Number.isNaN(v)) {
+        sum += v;
+      }
+    });
+    refTAC = sum;
+  }
+
+  if (sample && sample.indexValues && channels.length > 0) {
+    let sum = 0;
+    channels.forEach((field) => {
+      const v = sample.indexValues[field];
+      if (typeof v === "number" && !Number.isNaN(v)) {
+        sum += v;
+      }
+    });
+    sampleTAC = sum;
+  }
 
   // --- Repeatability (new) ---------------------------------------------------
   const refRep = ref.repeatStats || null;
@@ -1091,7 +1184,12 @@ function handlePatchClick(id) {
           <span class="text-slate-400">Sample ID:</span>
           ${id}
         </div>
-
+        ${refTAC != null || sampleTAC != null ? `
+        <div class="text-slate-300">
+          <span class="text-slate-400">TAC:</span>
+          Ref: ${refTAC != null ? fmtInt(refTAC) + '%' : '–'}${sampleTAC != null ? ' · Sample: ' + fmtInt(sampleTAC) + '%' : ''}
+        </div>
+        ` : ''}
 
 
         <div class="mt-1 border-t border-slate-700 pt-1">
@@ -1975,6 +2073,22 @@ function deltaEToHeatColor(dE, maxDelta) {
   const alpha = Math.min(dE, effectiveMax) / effectiveMax;
 
   return `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(3)})`;
+}
+
+// -----------------------------------------------------------------------------
+// TAC → WHITE TO EMERALD-700 GRADIENT
+// -----------------------------------------------------------------------------
+
+function tacValueToColor(tacValue, maxValue) {
+  // Normalize TAC value to 0–1 range
+  const t = Math.min(tacValue, maxValue) / maxValue;
+
+  // White (255, 255, 255) at 0% → emerald-700 (4, 120, 87) at 100%
+  const r = Math.round(255 * (1 - t) + 4 * t);
+  const g = Math.round(255 * (1 - t) + 120 * t);
+  const b = Math.round(255 * (1 - t) + 87 * t);
+
+  return `rgb(${r}, ${g}, ${b})`;
 }
 
 // -----------------------------------------------------------------------------
