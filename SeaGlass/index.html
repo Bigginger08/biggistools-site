@@ -72,6 +72,12 @@
       border-color: rgb(34, 197, 94);
     }
 
+    .patch-square.patch-ranking-highlight {
+      box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.95); /* red glow */
+      border-color: rgb(239, 68, 68);
+      z-index: 1;
+    }
+
     .mode-icon-btn img {
       display: block;
     }
@@ -119,7 +125,7 @@
         <h1 class="text-5xl font-semibold font-barriecito mx-1">
           SeaGlass
         </h1>
-        <h3 class="text-xs font-quicksand">v251210</h3>
+        <h3 class="text-xs font-quicksand">v260410</h3>
         <h2 class="text-1xl font-semibold font-quicksand mx-4">
             View and compare your CGATS files
         </h2>
@@ -420,6 +426,15 @@
         </div>
       </div>
     </main>
+  </div>
+
+  <!-- ΔE ranking panel — fixed outside the main container -->
+  <div
+    id="deltaRanking"
+    class="hidden fixed right-5 top-14 bottom-4 w-30 z-10 flex flex-col
+           bg-slate-900/90 border border-slate-700 rounded-lg p-2 backdrop-blur-sm"
+  >
+    <!-- ΔE ranking injected here -->
   </div>
 
   <script src="app.js"></script>

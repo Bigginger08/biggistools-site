@@ -55,6 +55,7 @@ const indexChannelSelect = document.getElementById("indexChannelSelect");
 const indexControlsHint  = document.getElementById("indexControlsHint");
 
 const patchDetailsPanel  = document.getElementById("patchDetailsPanel");
+const deltaRanking       = document.getElementById("deltaRanking");
 const headerToggleButton = document.getElementById("headerToggleButton");
 const headerControls     = document.getElementById("headerControls");
 const clearRefButton     = document.getElementById("clearRefButton");
@@ -967,6 +968,147 @@ function updateView() {
     chartContainer.appendChild(wrapper);
   });
 
+  // Render ΔE ranking sidebar
+  renderDeltaRanking(deltaMap);
+}
+
+// -----------------------------------------------------------------------------
+// ΔE RANKING SIDEBAR
+// -----------------------------------------------------------------------------
+
+function shortChannelName(fieldName, indexFieldMeta) {
+  // Try ink name from metadata
+  const meta = indexFieldMeta && indexFieldMeta[fieldName];
+  if (meta && meta.inkName) {
+    const ink = meta.inkName.trim();
+    // Single-word well-known names → single char
+    const known = { Cyan: "C", Magenta: "M", Yellow: "Y", Black: "K",
+                    Orange: "O", Green: "G", Violet: "V", Blue: "B",
+                    Red: "R", White: "W", "Light Cyan": "Lc",
+                    "Light Magenta": "Lm" };
+    if (known[ink]) return known[ink];
+    // Fallback: first 2 chars
+    return ink.slice(0, 2);
+  }
+  // CMYK_X → X
+  const cmykMatch = fieldName.match(/^CMYK_([A-Z]+)$/i);
+  if (cmykMatch) return cmykMatch[1].toUpperCase();
+  // nCLR_k → k
+  const clrMatch = fieldName.match(/^\d+CLR_(\d+)$/i);
+  if (clrMatch) return clrMatch[1];
+  return fieldName.slice(0, 3);
+}
+
+function renderDeltaRanking(deltaMap) {
+  if (!deltaRanking) return;
+
+  if (!deltaMap || !refPatches || !samplePatches) {
+    deltaRanking.classList.add("hidden");
+    return;
+  }
+
+  deltaRanking.classList.remove("hidden");
+  deltaRanking.innerHTML = "";
+
+  // Title
+  const title = document.createElement("div");
+  title.className = "text-[10px] font-semibold text-slate-300 mb-0.5 text-center tracking-wide";
+  title.textContent = "Patches by ΔE";
+  deltaRanking.appendChild(title);
+
+  // Scrollable list
+  const scroll = document.createElement("div");
+  scroll.className = "flex flex-col gap-0.5 overflow-y-auto";
+  scroll.style.maxHeight = "calc(120vh - 20px)";
+  deltaRanking.appendChild(scroll);
+
+  const layout = refLayoutMeta || deriveSimpleLayout(refPatches);
+  const indexFields = (layout && layout.indexFields) || [];
+  const indexFieldMeta = (layout && layout.indexFieldMeta) || {};
+
+  // Sort descending by ΔE
+  const sorted = Object.entries(deltaMap).sort((a, b) => b[1] - a[1]);
+
+  sorted.forEach(([id, dE]) => {
+    const ref = refPatches[id];
+    const sample = samplePatches ? samplePatches[id] : null;
+    if (!ref || !sample) return;
+
+    const refCss = rgbToCSS(labToSRGB(ref.L, ref.a, ref.b));
+    const sCss   = rgbToCSS(labToSRGB(sample.L, sample.a, sample.b));
+
+    // Compact ink label: C50 M0 Y0 K5 …
+    let inkLabel = "";
+    if (indexFields.length > 0) {
+      const parts = indexFields.map((field) => {
+        const v = ref.indexValues && ref.indexValues[field] != null
+          ? ref.indexValues[field] : null;
+        if (v == null) return null;
+        const abbr = shortChannelName(field, indexFieldMeta);
+        return `${abbr}${Math.round(v)}`;
+      }).filter(Boolean);
+      inkLabel = parts.join(" ");
+    }
+
+    const entry = document.createElement("div");
+    entry.className =
+      "flex flex-col items-center gap-0.5 cursor-pointer rounded px-0.5 py-0.5 " +
+      "hover:bg-slate-700/50 transition-colors";
+    entry.title = `${id}: ΔE00 = ${dE.toFixed(3)}`;
+    entry.addEventListener("click", () => {
+      // Clear previous ranking highlight
+      document.querySelectorAll(".patch-ranking-highlight").forEach((el) =>
+        el.classList.remove("patch-ranking-highlight")
+      );
+      // Clear grid selection highlight
+      if (selectedPatchElement) {
+        selectedPatchElement.classList.remove("patch-selected");
+        selectedPatchElement = null;
+      }
+      // Find patch in grid, highlight red, scroll into view
+      const patchEl = document.querySelector(`.patch-square[data-patch-id="${id}"]`);
+      if (patchEl) {
+        patchEl.classList.add("patch-ranking-highlight");
+        patchEl.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      }
+      // Open inspector
+      handlePatchClick(id);
+    });
+
+    // Two color squares side by side
+    const squares = document.createElement("div");
+    squares.className = "flex gap-1";
+
+    const refSq = document.createElement("div");
+    refSq.style.cssText =
+      `width:30px;height:30px;background:${refCss};` +
+      `border:1px solid rgba(255,255,255,0.18);border-radius:3px;flex-shrink:0;`;
+
+    const sampleSq = document.createElement("div");
+    sampleSq.style.cssText =
+      `width:30px;height:30px;background:${sCss};` +
+      `border:1px solid rgba(255,255,255,0.18);border-radius:3px;flex-shrink:0;`;
+
+    squares.appendChild(refSq);
+    squares.appendChild(sampleSq);
+    entry.appendChild(squares);
+
+    // Patch name + ΔE
+    const nameEl = document.createElement("div");
+    nameEl.className = "text-[9px] text-slate-200 text-center leading-tight font-medium";
+    nameEl.textContent = `${id}  ΔE ${dE.toFixed(2)}`;
+    entry.appendChild(nameEl);
+
+    // Ink values
+    if (inkLabel) {
+      const inkEl = document.createElement("div");
+      inkEl.className = "text-[8px] text-slate-400 text-center leading-tight";
+      inkEl.textContent = inkLabel;
+      entry.appendChild(inkEl);
+    }
+
+    scroll.appendChild(entry);
+  });
 }
 
 // -----------------------------------------------------------------------------
@@ -1813,6 +1955,7 @@ function indexOfAny(arr, candidates) {
 
 function createPatchDiv({ id, label, bgColor, text, extraInfo, pageIndex, row, col }) {
   const div = document.createElement("div");
+  div.dataset.patchId = id;
   div.className =
     "patch-square relative flex items-end justify-center rounded-md " +
     "text-[12px] font-medium overflow-hidden " +
@@ -1838,16 +1981,19 @@ function createPatchDiv({ id, label, bgColor, text, extraInfo, pageIndex, row, c
   }
 
   div.addEventListener("click", () => {
-    // highlight selected patch
+    // Clear any ranking highlight
+    document.querySelectorAll(".patch-ranking-highlight").forEach((el) =>
+      el.classList.remove("patch-ranking-highlight")
+    );
+
+    // Apply grid-selection highlight
     if (selectedPatchElement && selectedPatchElement !== div) {
       selectedPatchElement.classList.remove("patch-selected");
     }
     selectedPatchElement = div;
     div.classList.add("patch-selected");
 
-    // existing behavior: open / update inspector
     handlePatchClick(id);
-    e.stopPropagation();
   });
 
   return div;
