@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Biggi's SeaGlass</title>
-  <link rel="icon" type="image/x-icon" href="/SeaGlass/assets/seaGlassFavicon2.png">
+  <link rel="icon" type="image/x-icon" href="/assets/seaGlassFavicon2.png">
 
 
   <!-- Tailwind via CDN -->
@@ -18,7 +18,7 @@
   <style>
       body {
         font-family: "Quicksand", system-ui;
-        background-image: url("/SeaGlass/assets/seaglass.jpg");
+        background-image: url("/assets/seaglass.jpg");
         background-size: cover;         /* nicely fills screen */
         background-position: center;    /* centers the image */
         background-attachment: fixed;   /* subtle parallax effect */
@@ -70,6 +70,38 @@
     .patch-square.patch-selected {
       box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.9); /* emerald glow */
       border-color: rgb(34, 197, 94);
+    }
+
+    #graphGrid {
+      grid-template-rows: repeat(2, minmax(12rem, auto));
+    }
+
+    .graph-cell.graph-expanded {
+      grid-column: 1 / -1;
+      grid-row: 1 / -1;
+    }
+
+    .graph-expand-btn {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 5px;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(71, 85, 105, 0.6);
+      color: #94a3b8;
+      cursor: pointer;
+      z-index: 2;
+      transition: background 0.12s, color 0.12s;
+    }
+
+    .graph-expand-btn:hover {
+      background: rgba(30, 41, 59, 0.95);
+      color: #e2e8f0;
     }
 
     .patch-square.patch-ranking-highlight {
@@ -233,6 +265,27 @@
         </div>
       </div>
 
+      <!-- Primary view toggle -->
+      <div id="primaryViewToggle" class="flex items-center gap-3 pb-1 border-b border-slate-700/50">
+        <span class="text-xs text-slate-400 font-medium">View:</span>
+        <div class="flex rounded-full border border-slate-600 bg-slate-900/60 overflow-hidden text-xs font-semibold">
+          <button
+            id="toggleChartView"
+            type="button"
+            class="px-4 py-1.5 transition-colors bg-emerald-700 text-white"
+          >
+            Chart
+          </button>
+          <button
+            id="toggleGraphView"
+            type="button"
+            class="px-4 py-1.5 transition-colors text-slate-400 hover:bg-slate-700/60"
+          >
+            Graph
+          </button>
+        </div>
+      </div>
+
       <!-- Mode control area -->
         <div
           id="modeControls"
@@ -252,7 +305,7 @@
                 data-mode="refColors"
               >
                 <img
-                  src="/SeaGlass/assets/icon_Reference.png"
+                  src="/assets/icon_Reference.png"
                   alt="Reference colors"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -265,7 +318,7 @@
                 data-mode="sampleColors"
               >
                 <img
-                  src="/SeaGlass/assets/icon_Sample.png"
+                  src="/assets/icon_Sample.png"
                   alt="Sample colors"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -278,7 +331,7 @@
                 data-mode="deltaE"
               >
                 <img
-                  src="/SeaGlass/assets/icon_DeltaE.png"
+                  src="/assets/icon_DeltaE.png"
                   alt="ΔE heatmap"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -291,7 +344,7 @@
                 data-mode="deltaLab"
               >
                 <img
-                  src="/SeaGlass/assets/icon_DeltaLab.png"
+                  src="/assets/icon_DeltaLab.png"
                   alt="ΔLab coloring"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -304,7 +357,7 @@
                 data-mode="index"
               >
                 <img
-                  src="/SeaGlass/assets/icon_Channels.png"
+                  src="/assets/icon_Channels.png"
                   alt="Index values"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -317,7 +370,7 @@
                 data-mode="refRepeat"
               >
                 <img
-                  src="/SeaGlass/assets/icon_ReferenceRepeatability.png"
+                  src="/assets/icon_ReferenceRepeatability.png"
                   alt="Reference repeatability"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -330,7 +383,7 @@
                 data-mode="sampleRepeat"
               >
                 <img
-                  src="/SeaGlass/assets/icon_SampleRepeatability.png"
+                  src="/assets/icon_SampleRepeatability.png"
                   alt="Sample repeatability"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -423,6 +476,19 @@
       <div class="max-w-10xl mx-auto px-4 py-4">
         <div id="chartContainer" class="flex flex-col items-center gap-6">
           <!-- Pages will be injected here -->
+        </div>
+        <div id="graphContainer" class="hidden flex-col gap-0 w-full py-4">
+          <!-- Graph visualizations — single 4×2 grid so cells can span all cols/rows -->
+          <div id="graphGrid" class="grid grid-cols-4 gap-4">
+            <div id="graph-1" class="graph-cell relative bg-slate-900/60 border border-slate-700 rounded-lg p-3 min-h-48"></div>
+            <div id="graph-2" class="graph-cell relative bg-slate-900/60 border border-slate-700 rounded-lg p-3 min-h-48"></div>
+            <div id="graph-3" class="graph-cell relative bg-slate-900/60 border border-slate-700 rounded-lg p-3 min-h-48"></div>
+            <div id="graph-4" class="graph-cell relative bg-slate-900/60 border border-slate-700 rounded-lg p-3 min-h-48"></div>
+            <div id="graph-5" class="graph-cell relative bg-slate-900/60 border border-slate-700 rounded-lg p-3 min-h-48"></div>
+            <div id="graph-6" class="graph-cell relative bg-slate-900/60 border border-slate-700 rounded-lg p-3 min-h-48"></div>
+            <div id="graph-7" class="graph-cell relative bg-slate-900/60 border border-slate-700 rounded-lg p-3 min-h-48"></div>
+            <div id="graph-8" class="graph-cell relative bg-slate-900/60 border border-slate-700 rounded-lg p-3 min-h-48"></div>
+          </div>
         </div>
       </div>
     </main>

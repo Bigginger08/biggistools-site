@@ -16,6 +16,8 @@ let samplePatches = null;
 let sampleLayoutMeta = null;
 let sampleFileNames = [];
 
+let primaryView = "chart";       // "chart" | "graph"
+let highlightedGraphPatchId = null;
 let viewMode = "refColors";      // "deltaE" | "deltaLab" | "refColors" | "sampleColors" | "index"
 let selectedIndexField = null;   // e.g. "CMYK_C", "7CLR_1"
 let selectedPatchElement = null;
@@ -56,6 +58,10 @@ const indexControlsHint  = document.getElementById("indexControlsHint");
 
 const patchDetailsPanel  = document.getElementById("patchDetailsPanel");
 const deltaRanking       = document.getElementById("deltaRanking");
+const chartContainer2    = document.getElementById("chartContainer"); // alias used below
+const graphContainer     = document.getElementById("graphContainer");
+const toggleChartView    = document.getElementById("toggleChartView");
+const toggleGraphView    = document.getElementById("toggleGraphView");
 const headerToggleButton = document.getElementById("headerToggleButton");
 const headerControls     = document.getElementById("headerControls");
 const clearRefButton     = document.getElementById("clearRefButton");
@@ -69,12 +75,76 @@ const viewModeCaption  = document.getElementById("viewModeCaption");
 // Header collapse / expand
 // -----------------------------------------------------------------------------
 
+const primaryViewToggle  = document.getElementById("primaryViewToggle");
+const modeControlsEl     = document.getElementById("modeControls");
+
 if (headerToggleButton && headerControls) {
   headerToggleButton.addEventListener("click", () => {
     const isHidden = headerControls.classList.toggle("hidden");
     headerToggleButton.textContent = isHidden ? "Show controls" : "Hide controls";
+
+    // Also hide/show the view toggle strip and mode controls
+    if (primaryViewToggle) primaryViewToggle.classList.toggle("hidden", isHidden);
+    if (modeControlsEl)    modeControlsEl.classList.toggle("hidden", isHidden);
+    // For heatmap legend: hide when collapsing; on expand let updateView re-evaluate
+    if (isHidden && heatmapLegend) heatmapLegend.classList.add("hidden");
+    if (!isHidden) updateView();
   });
 }
+
+// -----------------------------------------------------------------------------
+// PRIMARY VIEW TOGGLE (Chart ↔ Graph)
+// -----------------------------------------------------------------------------
+
+function setPrimaryView(mode) {
+  primaryView = mode;
+
+  const isChart = mode === "chart";
+
+  // Toggle button styling
+  if (toggleChartView) {
+    toggleChartView.classList.toggle("bg-emerald-700", isChart);
+    toggleChartView.classList.toggle("text-white", isChart);
+    toggleChartView.classList.toggle("text-slate-400", !isChart);
+    toggleChartView.classList.toggle("hover:bg-slate-700/60", !isChart);
+  }
+  if (toggleGraphView) {
+    toggleGraphView.classList.toggle("bg-emerald-700", !isChart);
+    toggleGraphView.classList.toggle("text-white", !isChart);
+    toggleGraphView.classList.toggle("text-slate-400", isChart);
+    toggleGraphView.classList.toggle("hover:bg-slate-700/60", isChart);
+  }
+
+  // Show/hide chart-specific UI
+  if (modeControlsEl) modeControlsEl.classList.toggle("hidden", !isChart);
+  if (chartContainer) chartContainer.classList.toggle("hidden", !isChart);
+  if (heatmapLegend)  heatmapLegend.classList.toggle("hidden", !isChart);
+
+  // Reset any expanded graph when switching away from Graph View
+  if (isChart && expandedGraphId) {
+    const cells = document.querySelectorAll(".graph-cell");
+    cells.forEach((cell) => {
+      cell.classList.remove("graph-expanded");
+      cell.style.display = "";
+      const btn = cell.querySelector(".graph-expand-btn");
+      if (btn) { btn.title = "Expand"; btn.innerHTML = ICON_EXPAND; }
+    });
+    expandedGraphId = null;
+  }
+
+  // Show/hide graph UI
+  if (graphContainer) {
+    graphContainer.classList.toggle("hidden", isChart);
+    graphContainer.classList.toggle("flex", !isChart);
+    if (!isChart) initGraphExpandButtons();
+  }
+
+  // Re-run updateView so ranking sidebar visibility is recalculated
+  updateView();
+}
+
+if (toggleChartView) toggleChartView.addEventListener("click", () => setPrimaryView("chart"));
+if (toggleGraphView) toggleGraphView.addEventListener("click", () => setPrimaryView("graph"));
 
 // -----------------------------------------------------------------------------
 // Clear buttons for reference and sample
@@ -764,32 +834,20 @@ function updateView() {
         }
   }
 
-  // Default: hide
+  // Heatmap legend — always hidden in Graph View; in Chart View follows mode
   if (heatmapLegend) {
     heatmapLegend.classList.add("hidden");
-  }
-
-  if (showDelta) {
-    // ΔE ref vs sample
-    if (heatmapLegend) {
-      heatmapLegend.classList.remove("hidden");
-    }
-    if (heatmapLegendLabel) {
-      heatmapLegendLabel.textContent = "ΔE00 (ref vs sample)";
-    }
-  } else if (showRefRepeat) {
-    if (heatmapLegend) {
-      heatmapLegend.classList.remove("hidden");
-    }
-    if (heatmapLegendLabel) {
-      heatmapLegendLabel.textContent = "Repeatability ΔE00 (reference set)";
-    }
-  } else if (showSampleRepeat) {
-    if (heatmapLegend) {
-      heatmapLegend.classList.remove("hidden");
-    }
-    if (heatmapLegendLabel) {
-      heatmapLegendLabel.textContent = "Repeatability ΔE00 (sample set)";
+    if (primaryView === "chart") {
+      if (showDelta) {
+        heatmapLegend.classList.remove("hidden");
+        if (heatmapLegendLabel) heatmapLegendLabel.textContent = "ΔE00 (ref vs sample)";
+      } else if (showRefRepeat) {
+        heatmapLegend.classList.remove("hidden");
+        if (heatmapLegendLabel) heatmapLegendLabel.textContent = "Repeatability ΔE00 (reference set)";
+      } else if (showSampleRepeat) {
+        heatmapLegend.classList.remove("hidden");
+        if (heatmapLegendLabel) heatmapLegendLabel.textContent = "Repeatability ΔE00 (sample set)";
+      }
     }
   }
   // for other modes (ref color, sample color, index, ΔLab) the legend stays hidden
@@ -970,6 +1028,12 @@ function updateView() {
 
   // Render ΔE ranking sidebar
   renderDeltaRanking(deltaMap);
+
+  // Render graph view charts
+  renderGraph1(deltaMap, highlightedGraphPatchId);
+  renderBullseyePlot("graph-2", "da", "db", "← ∆a →", "← ∆b →", "∆a vs ∆b", highlightedGraphPatchId);
+  renderBullseyePlot("graph-3", "da", "dL", "← ∆a →", "← ∆L →", "∆a vs ∆L", highlightedGraphPatchId);
+  renderBullseyePlot("graph-4", "db", "dL", "← ∆b →", "← ∆L →", "∆b vs ∆L", highlightedGraphPatchId);
 }
 
 // -----------------------------------------------------------------------------
@@ -1069,8 +1133,16 @@ function renderDeltaRanking(deltaMap) {
       const patchEl = document.querySelector(`.patch-square[data-patch-id="${id}"]`);
       if (patchEl) {
         patchEl.classList.add("patch-ranking-highlight");
-        patchEl.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+        // Scroll so the patch lands in the center of the visible area below the sticky header
+        const header = document.querySelector("header");
+        const headerH = header ? header.getBoundingClientRect().bottom : 0;
+        const rect = patchEl.getBoundingClientRect();
+        const patchMidY = rect.top + rect.height / 2;
+        const visibleMidY = headerH + (window.innerHeight - headerH) / 2;
+        window.scrollBy({ top: patchMidY - visibleMidY, behavior: "smooth" });
       }
+      // Highlight in graph views
+      highlightGraphPatch(id);
       // Open inspector
       handlePatchClick(id);
     });
@@ -2235,6 +2307,415 @@ function tacValueToColor(tacValue, maxValue) {
   const b = Math.round(255 * (1 - t) + 87 * t);
 
   return `rgb(${r}, ${g}, ${b})`;
+}
+
+// -----------------------------------------------------------------------------
+// GRAPH GRID — expand / minimize
+// -----------------------------------------------------------------------------
+
+const ICON_EXPAND = `<svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+  <polyline points="9,1 13,1 13,5"/><polyline points="5,13 1,13 1,9"/>
+  <line x1="13" y1="1" x2="8" y2="6"/><line x1="1" y1="13" x2="6" y2="8"/>
+</svg>`;
+
+const ICON_MINIMIZE = `<svg viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+  <polyline points="8,6 13,6 13,1"/><polyline points="6,8 1,8 1,13"/>
+  <line x1="13" y1="1" x2="8" y2="6"/><line x1="1" y1="13" x2="6" y2="8"/>
+</svg>`;
+
+let expandedGraphId = null;
+
+function initGraphExpandButtons() {
+  const cells = document.querySelectorAll(".graph-cell");
+  cells.forEach((cell) => {
+    // Avoid duplicate buttons if called again
+    if (cell.querySelector(".graph-expand-btn")) return;
+
+    const btn = document.createElement("button");
+    btn.className = "graph-expand-btn";
+    btn.title = "Expand";
+    btn.innerHTML = ICON_EXPAND;
+    btn.addEventListener("click", () => toggleGraphExpand(cell.id));
+    cell.appendChild(btn);
+  });
+}
+
+function toggleGraphExpand(id) {
+  const cells = document.querySelectorAll(".graph-cell");
+
+  if (expandedGraphId === id) {
+    // Minimize — restore all cells
+    expandedGraphId = null;
+    cells.forEach((cell) => {
+      cell.classList.remove("graph-expanded");
+      cell.style.display = "";
+      const btn = cell.querySelector(".graph-expand-btn");
+      if (btn) { btn.title = "Expand"; btn.innerHTML = ICON_EXPAND; }
+    });
+  } else {
+    // Expand this cell, hide others
+    expandedGraphId = id;
+    cells.forEach((cell) => {
+      if (cell.id === id) {
+        cell.classList.add("graph-expanded");
+        cell.style.display = "";
+        const btn = cell.querySelector(".graph-expand-btn");
+        if (btn) { btn.title = "Minimize"; btn.innerHTML = ICON_MINIMIZE; }
+      } else {
+        cell.style.display = "none";
+      }
+    });
+  }
+}
+
+function highlightGraphPatch(id) {
+  highlightedGraphPatchId = id;
+  // Re-render all four graphs with the new highlight
+  const deltaMap = buildDeltaMap();
+  renderGraph1(deltaMap, highlightedGraphPatchId);
+  renderBullseyePlot("graph-2", "da", "db", "← ∆a →", "← ∆b →", "∆a vs ∆b", highlightedGraphPatchId);
+  renderBullseyePlot("graph-3", "da", "dL", "← ∆a →", "← ∆L →", "∆a vs ∆L", highlightedGraphPatchId);
+  renderBullseyePlot("graph-4", "db", "dL", "← ∆b →", "← ∆L →", "∆b vs ∆L", highlightedGraphPatchId);
+}
+
+function buildDeltaMap() {
+  if (!refPatches || !samplePatches) return null;
+  const deltaMap = {};
+  Object.keys(refPatches).forEach((id) => {
+    const r = refPatches[id];
+    const s = samplePatches[id];
+    if (r && s) deltaMap[id] = deltaE2000(r, s);
+  });
+  return Object.keys(deltaMap).length ? deltaMap : null;
+}
+
+// -----------------------------------------------------------------------------
+// GRAPH VIEW — chart renderers
+// -----------------------------------------------------------------------------
+
+function graphCellContent(id) {
+  const container = document.getElementById(id);
+  if (!container) return null;
+  let inner = container.querySelector(".graph-cell-content");
+  if (!inner) {
+    inner = document.createElement("div");
+    inner.className = "graph-cell-content w-full h-full";
+    // Insert before the expand button so button stays on top
+    container.insertBefore(inner, container.firstChild);
+  }
+  return inner;
+}
+
+function renderBullseyePlot(graphId, xKey, yKey, xLabel, yLabel, title, highlightId = null) {
+  const inner = graphCellContent(graphId);
+  if (!inner) return;
+
+  if (!refPatches || !samplePatches) {
+    inner.innerHTML = `<div class="text-slate-500 text-xs italic p-2">Load reference &amp; sample chart to see scatter plot.</div>`;
+    return;
+  }
+
+  // Collect delta pairs
+  const points = [];
+  let highlightPt = null;
+  Object.keys(refPatches).forEach((id) => {
+    const ref    = refPatches[id];
+    const sample = samplePatches[id];
+    if (!ref || !sample) return;
+    const vals = {
+      dL: sample.L - ref.L,
+      da: sample.a - ref.a,
+      db: sample.b - ref.b,
+    };
+    const x = vals[xKey], y = vals[yKey];
+    if (isNaN(x) || isNaN(y)) return;
+    const pt = { x, y };
+    points.push(pt);
+    if (id === highlightId) highlightPt = pt;
+  });
+
+  if (!points.length) {
+    inner.innerHTML = `<div class="text-slate-500 text-xs italic p-2">No common patches found.</div>`;
+    return;
+  }
+
+  // Layout
+  const vW = 300, vH = 300;
+  const ml = 32, mr = 18, mt = 26, mb = 32;
+  const iW = vW - ml - mr, iH = vH - mt - mb;
+  const cx = ml + iW / 2, cy = mt + iH / 2;
+  const plotR = Math.min(iW, iH) / 2;
+
+  // Scale: biggest absolute value determines ring count
+  const maxAbs = Math.max(
+    Math.ceil(Math.max(...points.map((p) => Math.abs(p.x)), ...points.map((p) => Math.abs(p.y)))),
+    2
+  );
+  const scale = plotR / maxAbs;
+  const clipId = `clip-${graphId}`;
+
+  // ── Concentric rings ──────────────────────────────────────────────────────
+  let rings = "";
+  for (let r = 1; r <= maxAbs; r++) {
+    const cr = (r * scale).toFixed(1);
+    const isTwo = r === 2;
+    rings += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${cr}"
+      fill="none"
+      stroke="${isTwo ? "#f59e0b" : "#1e3a5f"}"
+      stroke-width="${isTwo ? 1.2 : 0.8}"
+      ${isTwo ? 'stroke-dasharray="5,3" opacity="0.75"' : ""}/>`;
+  }
+
+  // ── Ring labels on positive x-axis ───────────────────────────────────────
+  let ringLabels = "";
+  for (let r = 1; r <= maxAbs; r++) {
+    const lx = (cx + r * scale).toFixed(1);
+    ringLabels += `<text x="${lx}" y="${(cy + 9).toFixed(1)}"
+      text-anchor="middle" fill="${r === 2 ? "#f59e0b" : "#334155"}"
+      font-size="8">${r}</text>`;
+  }
+  // Label for "0" at origin
+  ringLabels += `<text x="${(cx - 4).toFixed(1)}" y="${(cy + 9).toFixed(1)}"
+    text-anchor="end" fill="#334155" font-size="8">0</text>`;
+
+  // ── Negative axis labels (left of origin, above origin) ──────────────────
+  for (let r = 1; r <= maxAbs; r++) {
+    const lxNeg = (cx - r * scale).toFixed(1);
+    ringLabels += `<text x="${lxNeg}" y="${(cy + 9).toFixed(1)}"
+      text-anchor="middle" fill="#334155" font-size="8">−${r}</text>`;
+    // Y-axis: positive = up, negative = down
+    const lyPos = (cy - r * scale).toFixed(1);
+    const lyNeg = (cy + r * scale).toFixed(1);
+    ringLabels += `<text x="${(cx - 5).toFixed(1)}" y="${lyPos}"
+      text-anchor="end" dominant-baseline="middle" fill="#334155" font-size="8">${r}</text>`;
+    ringLabels += `<text x="${(cx - 5).toFixed(1)}" y="${lyNeg}"
+      text-anchor="end" dominant-baseline="middle" fill="#334155" font-size="8">−${r}</text>`;
+  }
+
+  // ── Data dots ─────────────────────────────────────────────────────────────
+  let dots = "";
+  points.forEach(({ x, y }) => {
+    const px = (cx + x * scale).toFixed(1);
+    const py = (cy - y * scale).toFixed(1); // SVG y inverted
+    dots += `<circle cx="${px}" cy="${py}" r="2.5"
+      fill="rgba(52,211,153,0.65)" stroke="rgba(16,185,129,0.35)" stroke-width="0.8"/>`;
+  });
+
+  // ── Highlight dot ─────────────────────────────────────────────────────────
+  let highlightDot = "";
+  if (highlightPt) {
+    const hx = (cx + highlightPt.x * scale).toFixed(1);
+    const hy = (cy - highlightPt.y * scale).toFixed(1);
+    highlightDot = `
+      <circle cx="${hx}" cy="${hy}" r="7"
+        fill="none" stroke="rgba(239,68,68,0.5)" stroke-width="1.5"/>
+      <circle cx="${hx}" cy="${hy}" r="4"
+        fill="rgb(239,68,68)" stroke="rgb(255,255,255)" stroke-width="1"/>`;
+  }
+
+  inner.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 ${vW} ${vH}" style="width:100%;height:100%;display:block;">
+    <defs>
+      <clipPath id="${clipId}">
+        <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${plotR.toFixed(1)}"/>
+      </clipPath>
+    </defs>
+
+    <!-- Title -->
+    <text x="${cx.toFixed(1)}" y="16" text-anchor="middle"
+      fill="#cbd5e1" font-size="11" font-weight="600"
+      font-family="Quicksand,system-ui">${title}</text>
+
+    <!-- Rings -->
+    ${rings}
+
+    <!-- Crosshair -->
+    <line x1="${(cx - plotR).toFixed(1)}" y1="${cy.toFixed(1)}"
+          x2="${(cx + plotR).toFixed(1)}" y2="${cy.toFixed(1)}"
+          stroke="#334155" stroke-width="0.8"/>
+    <line x1="${cx.toFixed(1)}" y1="${(cy - plotR).toFixed(1)}"
+          x2="${cx.toFixed(1)}" y2="${(cy + plotR).toFixed(1)}"
+          stroke="#334155" stroke-width="0.8"/>
+
+    <!-- Origin dot -->
+    <circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="2"
+      fill="#475569"/>
+
+    <!-- Ring + axis labels -->
+    ${ringLabels}
+
+    <!-- Data points, clipped to plot circle -->
+    <g clip-path="url(#${clipId})">${dots}${highlightDot}</g>
+
+    <!-- Axis labels -->
+    <text x="${cx.toFixed(1)}" y="${(vH - 4).toFixed(1)}"
+      text-anchor="middle" fill="#64748b" font-size="10">${xLabel}</text>
+    <text transform="rotate(-90)"
+      x="${(-cy).toFixed(1)}" y="10"
+      text-anchor="middle" fill="#64748b" font-size="10">${yLabel}</text>
+  </svg>`;
+}
+
+function renderGraph1(deltaMap, highlightId = null) {
+  const inner = graphCellContent("graph-1");
+  if (!inner) return;
+
+  if (!deltaMap) {
+    inner.innerHTML =
+      `<div class="text-slate-500 text-xs italic p-2">
+         Load a reference &amp; sample chart to see ΔE distribution.
+       </div>`;
+    return;
+  }
+
+  const values = Object.values(deltaMap)
+    .filter(v => typeof v === "number" && !isNaN(v))
+    .sort((a, b) => a - b);
+
+  if (!values.length) {
+    inner.innerHTML = `<div class="text-slate-500 text-xs italic p-2">No ΔE data.</div>`;
+    return;
+  }
+
+  const n = values.length;
+
+  // SVG dimensions
+  const vW = 500, vH = 280;
+  const ml = 46, mr = 36, mt = 24, mb = 48;
+  const iW = vW - ml - mr;
+  const iH = vH - mt - mb;
+
+  const yMax = Math.max(Math.ceil(Math.max(...values)), 5);
+  const refDE = 2;
+
+  const xPos = pct  => ml + (pct / 100) * iW;
+  const yPos = de   => mt + iH - (de / yMax) * iH;
+
+  // ── CFD polyline ──────────────────────────────────────────────────────────
+  // each patch i → x = (i+1)/n × 100%, y = values[i]
+  const pts = values
+    .map((v, i) => `${xPos((i + 1) / n * 100).toFixed(1)},${yPos(v).toFixed(1)}`)
+    .join(" ");
+
+  // ── Crossing point at ΔE = refDE ─────────────────────────────────────────
+  let crossPct = null;
+  if (values[0] >= refDE) {
+    crossPct = 0;
+  } else if (values[n - 1] < refDE) {
+    crossPct = 100;
+  } else {
+    const idx = values.findIndex(v => v >= refDE);
+    if (idx > 0) {
+      const x0 = idx / n * 100;
+      const x1 = (idx + 1) / n * 100;
+      crossPct = x0 + (x1 - x0) * (refDE - values[idx - 1]) / (values[idx] - values[idx - 1]);
+    }
+  }
+
+  // ── Horizontal grid lines (every 1 ΔE step) ───────────────────────────────
+  let gridLines = "";
+  for (let de = 1; de <= yMax; de++) {
+    const y = yPos(de).toFixed(1);
+    const isRef = de === refDE;
+    gridLines += `<line x1="${ml}" y1="${y}" x2="${ml + iW}" y2="${y}"
+      stroke="${isRef ? '#f59e0b' : '#1e293b'}"
+      stroke-width="${isRef ? 1.5 : 1}"
+      stroke-dasharray="${isRef ? '6,4' : 'none'}" />`;
+  }
+
+  // ── Y-axis labels ─────────────────────────────────────────────────────────
+  let yLabels = "";
+  for (let de = 0; de <= yMax; de++) {
+    const y = yPos(de).toFixed(1);
+    const isRef = de === refDE;
+    yLabels += `<text x="${ml - 7}" y="${y}" text-anchor="end" dominant-baseline="middle"
+      fill="${isRef ? '#f59e0b' : '#64748b'}" font-size="10">${de}</text>`;
+  }
+
+  // ── X-axis ticks + labels (every 20%) ─────────────────────────────────────
+  let xLabels = "";
+  for (let pct = 0; pct <= 100; pct += 20) {
+    const x = xPos(pct).toFixed(1);
+    const yBase = (mt + iH).toFixed(1);
+    xLabels += `<line x1="${x}" y1="${yBase}" x2="${x}" y2="${(mt + iH + 4).toFixed(1)}"
+      stroke="#475569" stroke-width="1" />`;
+    xLabels += `<text x="${x}" y="${(mt + iH + 14).toFixed(1)}" text-anchor="middle"
+      fill="#64748b" font-size="10">${pct}%</text>`;
+  }
+
+  // ── Crossing annotation ───────────────────────────────────────────────────
+  let crossingMarkup = "";
+  if (crossPct !== null) {
+    const cx = xPos(crossPct).toFixed(1);
+    const cy = yPos(refDE).toFixed(1);
+    const yBase = (mt + iH).toFixed(1);
+    crossingMarkup = `
+      <line x1="${cx}" y1="${cy}" x2="${cx}" y2="${yBase}"
+        stroke="#f59e0b" stroke-width="1" stroke-dasharray="3,3" />
+      <circle cx="${cx}" cy="${cy}" r="3.5" fill="#f59e0b" />
+      <text x="${cx}" y="${(mt + iH + 30).toFixed(1)}" text-anchor="middle"
+        fill="#f59e0b" font-size="10" font-weight="bold">${crossPct.toFixed(1)}%</text>`;
+  }
+
+  // ── Highlighted patch marker ──────────────────────────────────────────────
+  let highlightMarkup = "";
+  if (highlightId && deltaMap[highlightId] != null) {
+    const hDE = deltaMap[highlightId];
+    // find its rank in the sorted array
+    const rank = values.filter(v => v <= hDE).length;
+    const hPct = rank / n * 100;
+    const hx = xPos(hPct).toFixed(1);
+    const hy = yPos(hDE).toFixed(1);
+    const yBase = (mt + iH).toFixed(1);
+    highlightMarkup = `
+      <line x1="${hx}" y1="${mt}" x2="${hx}" y2="${yBase}"
+        stroke="rgba(239,68,68,0.35)" stroke-width="1" stroke-dasharray="3,3"/>
+      <circle cx="${hx}" cy="${hy}" r="5"
+        fill="none" stroke="rgba(239,68,68,0.5)" stroke-width="1.5"/>
+      <circle cx="${hx}" cy="${hy}" r="3"
+        fill="rgb(239,68,68)" stroke="white" stroke-width="1"/>`;
+  }
+
+  inner.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 ${vW} ${vH}" style="width:100%;height:100%;display:block;">
+
+    <!-- Title -->
+    <text x="${ml}" y="13" fill="#cbd5e1" font-size="11" font-weight="600"
+      font-family="Quicksand,system-ui">Cumulative ΔE2000 distribution</text>
+
+    <!-- Grid -->
+    ${gridLines}
+
+    <!-- Axes -->
+    <line x1="${ml}" y1="${mt}" x2="${ml}" y2="${mt + iH}" stroke="#334155" stroke-width="1" />
+    <line x1="${ml}" y1="${mt + iH}" x2="${ml + iW}" y2="${mt + iH}" stroke="#334155" stroke-width="1" />
+
+    <!-- Y-axis labels -->
+    ${yLabels}
+    <!-- Y-axis title -->
+    <text transform="rotate(-90)" x="${-(mt + iH / 2).toFixed(0)}" y="11"
+      text-anchor="middle" fill="#475569" font-size="10">ΔE2000</text>
+
+    <!-- X-axis labels & ticks -->
+    ${xLabels}
+    <!-- X-axis title -->
+    <text x="${(ml + iW / 2).toFixed(1)}" y="${(vH - 4).toFixed(1)}"
+      text-anchor="middle" fill="#475569" font-size="10">Cumulative % of patches</text>
+
+    <!-- ΔE=2 reference label -->
+    <text x="${(ml + iW + 4).toFixed(1)}" y="${yPos(refDE).toFixed(1)}"
+      dominant-baseline="middle" fill="#f59e0b" font-size="9" font-weight="600">ΔE 2</text>
+
+    <!-- CFD line -->
+    <polyline points="${pts}" fill="none" stroke="#34d399"
+      stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+
+    <!-- Crossing annotation -->
+    ${crossingMarkup}
+
+    <!-- Highlighted patch -->
+    ${highlightMarkup}
+  </svg>`;
 }
 
 // -----------------------------------------------------------------------------
