@@ -32,6 +32,7 @@ const MODE_CAPTIONS = {
   deltaE: "ΔE heatmap",
   deltaLab: "ΔLab encoded difference",
   index: "Index channel values",
+  inkChannels: "Pure ink channels",
   refRepeat: "Reference repeatability",
   sampleRepeat: "Sample repeatability",
 };
@@ -699,6 +700,7 @@ function updateView() {
   const showDeltaLab    = hasSample && viewMode === "deltaLab";
   const showSampleColor = hasSample && viewMode === "sampleColors";
   const showIndexValues = viewMode === "index";
+  const showInkChannels = viewMode === "inkChannels";
   const showRefRepeat    = viewMode === "refRepeat";
   const showSampleRepeat = viewMode === "sampleRepeat";
   const refCount    = refFileNames ? refFileNames.length : (refPatches ? 1 : 0);
@@ -810,6 +812,13 @@ function updateView() {
       if (modeLegend) {
         modeLegend.textContent =
           "Colors show the ink/channel value (0–100%) for the selected index; select the channel above to change the view.";
+      }
+  } else if (showInkChannels) {
+    modeLabel.textContent = "Pure ink channel patches";
+    summaryEl.textContent = `Reference color · pure single-channel patches highlighted · Ref files: ${refCount}`;
+      if (modeLegend) {
+        modeLegend.textContent =
+          "Shows only patches with a single non-zero ink channel in their reference color; all other patches are dimmed.";
       }
   } else if (showRefRepeat) {
     modeLabel.textContent = "Repeatability heatmap (reference)";
@@ -996,6 +1005,25 @@ function updateView() {
           bgColor = rgbToCSS(rgb);
           extraInfo = `L*a*b*: ${rp.L.toFixed(1)}, ${rp.a.toFixed(1)}, ${rp.b.toFixed(1)}`;
         }
+      } else if (showInkChannels) {
+        const inkMeta = (layout && layout.indexFieldMeta) || {};
+        if (isPureInkChannel(rp)) {
+          const rgb = labToSRGB(rp.L, rp.a, rp.b);
+          bgColor = rgbToCSS(rgb);
+          const nonZeroField = Object.keys(rp.indexValues || {}).find(
+            (f) => typeof rp.indexValues[f] === "number" && rp.indexValues[f] > 0
+          );
+          if (nonZeroField) {
+            const abbr = shortChannelName(nonZeroField, inkMeta);
+            text = `${abbr}${Math.round(rp.indexValues[nonZeroField])}`;
+            extraInfo = `Pure channel: ${text} · L*a*b*: ${rp.L.toFixed(1)}, ${rp.a.toFixed(1)}, ${rp.b.toFixed(1)}`;
+          } else {
+            extraInfo = `L*a*b*: ${rp.L.toFixed(1)}, ${rp.a.toFixed(1)}, ${rp.b.toFixed(1)}`;
+          }
+        } else {
+          bgColor = "rgba(15, 23, 42, 0.35)";
+          extraInfo = `L*a*b*: ${rp.L.toFixed(1)}, ${rp.a.toFixed(1)}, ${rp.b.toFixed(1)}`;
+        }
       } else {
         const rgb = labToSRGB(rp.L, rp.a, rp.b);
         bgColor = rgbToCSS(rgb);
@@ -1039,6 +1067,16 @@ function updateView() {
 // -----------------------------------------------------------------------------
 // ΔE RANKING SIDEBAR
 // -----------------------------------------------------------------------------
+
+function isPureInkChannel(patch) {
+  if (!patch || !patch.indexValues) return false;
+  const fields = Object.keys(patch.indexValues);
+  if (fields.length === 0) return false;
+  const nonZero = fields.filter(
+    (f) => typeof patch.indexValues[f] === "number" && patch.indexValues[f] > 0
+  );
+  return nonZero.length === 1;
+}
 
 function shortChannelName(fieldName, indexFieldMeta) {
   // Try ink name from metadata

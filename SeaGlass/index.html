@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Biggi's SeaGlass</title>
-  <link rel="icon" type="image/x-icon" href="/SeaGlass/assets/seaGlassFavicon2.png">
+  <link rel="icon" type="image/x-icon" href="/assets/seaGlassFavicon2.png">
 
 
   <!-- Tailwind via CDN -->
@@ -18,7 +18,7 @@
   <style>
       body {
         font-family: "Quicksand", system-ui;
-        background-image: url("/SeaGlass/assets/seaglass.jpg");
+        background-image: url("/assets/seaglass.jpg");
         background-size: cover;         /* nicely fills screen */
         background-position: center;    /* centers the image */
         background-attachment: fixed;   /* subtle parallax effect */
@@ -305,7 +305,7 @@
                 data-mode="refColors"
               >
                 <img
-                  src="/SeaGlass/assets/icon_Reference.png"
+                  src="/assets/icon_Reference.png"
                   alt="Reference colors"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -318,7 +318,7 @@
                 data-mode="sampleColors"
               >
                 <img
-                  src="/SeaGlass/assets/icon_Sample.png"
+                  src="/assets/icon_Sample.png"
                   alt="Sample colors"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -331,7 +331,7 @@
                 data-mode="deltaE"
               >
                 <img
-                  src="/SeaGlass/assets/icon_DeltaE.png"
+                  src="/assets/icon_DeltaE.png"
                   alt="ΔE heatmap"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -344,7 +344,7 @@
                 data-mode="deltaLab"
               >
                 <img
-                  src="/SeaGlass/assets/icon_DeltaLab.png"
+                  src="/assets/icon_DeltaLab.png"
                   alt="ΔLab coloring"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -357,8 +357,21 @@
                 data-mode="index"
               >
                 <img
-                  src="/SeaGlass/assets/icon_Channels.png"
+                  src="/assets/icon_Channels.png"
                   alt="Index values"
+                  class="max-w-[70%] max-h-[70%]"
+                />
+              </button>
+
+              <!-- Pure ink channels -->
+              <button
+                type="button"
+                class="view-mode-btn mode-icon-btn w-10 h-10 rounded-xl border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform"
+                data-mode="inkChannels"
+              >
+                <img
+                  src="/assets/icon_Inks.png"
+                  alt="Pure ink channels"
                   class="max-w-[70%] max-h-[70%]"
                 />
               </button>
@@ -370,7 +383,7 @@
                 data-mode="refRepeat"
               >
                 <img
-                  src="/SeaGlass/assets/icon_ReferenceRepeatability.png"
+                  src="/assets/icon_ReferenceRepeatability.png"
                   alt="Reference repeatability"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -383,7 +396,7 @@
                 data-mode="sampleRepeat"
               >
                 <img
-                  src="/SeaGlass/assets/icon_SampleRepeatability.png"
+                  src="/assets/icon_SampleRepeatability.png"
                   alt="Sample repeatability"
                   class="max-w-[70%] max-h-[70%]"
                 />
