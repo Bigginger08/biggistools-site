@@ -18,6 +18,14 @@ let sampleFileNames = [];
 
 let primaryView = "chart";       // "chart" | "graph"
 let highlightedGraphPatchId = null;
+
+// Dataset display mode for graphs 5–8: "ref" | "sample" | "both"
+const graphDatasetMode = {
+  "graph-5": "both",
+  "graph-6": "both",
+  "graph-7": "both",
+  "graph-8": "both",
+};
 let viewMode = "refColors";      // "deltaE" | "deltaLab" | "refColors" | "sampleColors" | "index"
 let selectedIndexField = null;   // e.g. "CMYK_C", "7CLR_1"
 let selectedPatchElement = null;
@@ -138,7 +146,7 @@ function setPrimaryView(mode) {
   if (graphContainer) {
     graphContainer.classList.toggle("hidden", isChart);
     graphContainer.classList.toggle("flex", !isChart);
-    if (!isChart) initGraphExpandButtons();
+    if (!isChart) { initGraphExpandButtons(); initGraphDatasetToggles(); }
   }
 
   // Re-run updateView so ranking sidebar visibility is recalculated
@@ -1066,6 +1074,7 @@ function updateView() {
   renderBullseyePlot("graph-2", "da", "db", "← ∆a →", "← ∆b →", "∆a vs ∆b", highlightedGraphPatchId);
   renderBullseyePlot("graph-3", "da", "dL", "← ∆a →", "← ∆L →", "∆a vs ∆L", highlightedGraphPatchId);
   renderBullseyePlot("graph-4", "db", "dL", "← ∆b →", "← ∆L →", "∆b vs ∆L", highlightedGraphPatchId);
+  renderGraph5(highlightedGraphPatchId);
 }
 
 // -----------------------------------------------------------------------------
@@ -1298,18 +1307,17 @@ function renderPrimariesPanel() {
       const sp = samplePatches ? samplePatches[id] : null;
       const refCss = rgbToCSS(labToSRGB(rp.L, rp.a, rp.b));
       const sCss = sp ? rgbToCSS(labToSRGB(sp.L, sp.a, sp.b)) : null;
+      const dE = sp ? deltaE2000(rp, sp) : null;
 
       const entry = document.createElement("div");
       entry.className =
-        "flex flex-col items-center gap-0.5 cursor-pointer rounded px-0.5 py-0.5 " +
+        "flex flex-row items-center gap-1.5 cursor-pointer rounded px-1 py-0.5 " +
         "hover:bg-slate-700/50 transition-colors";
-      const titleStr = sp
-        ? `${id}: ${abbr}${Math.round(value)}%`
+      entry.title = dE != null
+        ? `${id}: ${abbr}${Math.round(value)}%  ΔE ${dE.toFixed(2)}`
         : `${id}: ${abbr}${Math.round(value)}%`;
-      entry.title = titleStr;
 
       entry.addEventListener("click", () => {
-        // Clear previous ranking highlight
         document.querySelectorAll(".patch-ranking-highlight").forEach((el) =>
           el.classList.remove("patch-ranking-highlight")
         );
@@ -1317,7 +1325,6 @@ function renderPrimariesPanel() {
           selectedPatchElement.classList.remove("patch-selected");
           selectedPatchElement = null;
         }
-        // Find patch in grid, highlight red, scroll into view
         const patchEl = document.querySelector(`.patch-square[data-patch-id="${id}"]`);
         if (patchEl) {
           patchEl.classList.add("patch-ranking-highlight");
@@ -1332,37 +1339,43 @@ function renderPrimariesPanel() {
         handlePatchClick(id);
       });
 
-      // Color square(s)
+      // Color square(s) — left side
       const squares = document.createElement("div");
-      squares.className = "flex gap-1";
+      squares.className = "flex gap-0.5 flex-shrink-0";
 
       const refSq = document.createElement("div");
       refSq.style.cssText =
-        `width:30px;height:30px;background:${refCss};` +
+        `width:22px;height:22px;background:${refCss};` +
         `border:1px solid rgba(255,255,255,0.18);border-radius:3px;flex-shrink:0;`;
       squares.appendChild(refSq);
 
       if (sCss) {
         const sampleSq = document.createElement("div");
         sampleSq.style.cssText =
-          `width:30px;height:30px;background:${sCss};` +
+          `width:22px;height:22px;background:${sCss};` +
           `border:1px solid rgba(255,255,255,0.18);border-radius:3px;flex-shrink:0;`;
         squares.appendChild(sampleSq);
       }
 
       entry.appendChild(squares);
 
-      // Label: patch name + value
+      // Labels — right side
+      const labelCol = document.createElement("div");
+      labelCol.className = "flex flex-col min-w-0";
+
       const nameEl = document.createElement("div");
-      nameEl.className = "text-[9px] text-slate-200 text-center leading-tight font-medium";
-      nameEl.textContent = `${abbr}${Math.round(value)}`;
-      entry.appendChild(nameEl);
+      nameEl.className = "text-[9px] text-slate-200 leading-tight font-medium truncate";
+      nameEl.textContent = `${abbr}${Math.round(value)}  ${id}`;
+      labelCol.appendChild(nameEl);
 
-      const idEl = document.createElement("div");
-      idEl.className = "text-[8px] text-slate-400 text-center leading-tight";
-      idEl.textContent = id;
-      entry.appendChild(idEl);
+      if (dE != null) {
+        const deEl = document.createElement("div");
+        deEl.className = "text-[8px] text-slate-400 leading-tight";
+        deEl.textContent = `ΔE ${dE.toFixed(2)}`;
+        labelCol.appendChild(deEl);
+      }
 
+      entry.appendChild(labelCol);
       scroll.appendChild(entry);
     });
   });
@@ -2526,6 +2539,44 @@ function initGraphExpandButtons() {
   });
 }
 
+const DATASET_TOGGLE_IDS = ["graph-5", "graph-6", "graph-7", "graph-8"];
+
+function initGraphDatasetToggles() {
+  DATASET_TOGGLE_IDS.forEach((cellId) => {
+    const cell = document.getElementById(cellId);
+    if (!cell) return;
+    // Avoid duplicates
+    if (cell.querySelector(".graph-dataset-toggle")) return;
+
+    const wrap = document.createElement("div");
+    wrap.className = "graph-dataset-toggle";
+
+    [["ref", "Ref"], ["sample", "Smp"], ["both", "R+S"]].forEach(([mode, label]) => {
+      const btn = document.createElement("button");
+      btn.textContent = label;
+      btn.dataset.mode = mode;
+      if (graphDatasetMode[cellId] === mode) btn.classList.add("active");
+      btn.addEventListener("click", () => {
+        graphDatasetMode[cellId] = mode;
+        // Update button states
+        wrap.querySelectorAll("button").forEach((b) =>
+          b.classList.toggle("active", b.dataset.mode === mode)
+        );
+        renderGraphByDataset(cellId);
+      });
+      wrap.appendChild(btn);
+    });
+
+    cell.appendChild(wrap);
+  });
+}
+
+// Dispatches to the specific renderer for graphs 5–8 when the dataset toggle changes.
+function renderGraphByDataset(cellId) {
+  if (cellId === "graph-5") renderGraph5(highlightedGraphPatchId);
+  // graph-6, 7, 8 will be wired as their renderers are implemented
+}
+
 function toggleGraphExpand(id) {
   const cells = document.querySelectorAll(".graph-cell");
 
@@ -2562,6 +2613,7 @@ function highlightGraphPatch(id) {
   renderBullseyePlot("graph-2", "da", "db", "← ∆a →", "← ∆b →", "∆a vs ∆b", highlightedGraphPatchId);
   renderBullseyePlot("graph-3", "da", "dL", "← ∆a →", "← ∆L →", "∆a vs ∆L", highlightedGraphPatchId);
   renderBullseyePlot("graph-4", "db", "dL", "← ∆b →", "← ∆L →", "∆b vs ∆L", highlightedGraphPatchId);
+  renderGraph5(highlightedGraphPatchId);
 }
 
 function buildDeltaMap() {
@@ -2901,6 +2953,344 @@ function renderGraph1(deltaMap, highlightId = null) {
 
     <!-- Highlighted patch -->
     ${highlightMarkup}
+  </svg>`;
+}
+
+// -----------------------------------------------------------------------------
+// Convex hull (Graham scan) — returns points in counter-clockwise order
+// Input/output: [{x,y}]
+// -----------------------------------------------------------------------------
+
+function convexHull(pts) {
+  if (pts.length < 3) return pts.slice();
+  const sorted = pts.slice().sort((a, b) => a.x !== b.x ? a.x - b.x : a.y - b.y);
+  const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const lower = [];
+  for (const p of sorted) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0)
+      lower.pop();
+    lower.push(p);
+  }
+  const upper = [];
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    const p = sorted[i];
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0)
+      upper.pop();
+    upper.push(p);
+  }
+  upper.pop(); lower.pop();
+  return lower.concat(upper);
+}
+
+// -----------------------------------------------------------------------------
+// GRAPH 5 — a*/b* gamut (scatter + primary ramps + spider)
+// -----------------------------------------------------------------------------
+
+function renderGraph5(highlightId = null) {
+  const inner = graphCellContent("graph-5");
+  if (!inner) return;
+
+  const mode      = graphDatasetMode["graph-5"];
+  const hasRef    = !!refPatches;
+  const hasSample = !!samplePatches;
+  const showRef    = (mode === "ref"    || mode === "both") && hasRef;
+  const showSample = (mode === "sample" || mode === "both") && hasSample;
+
+  if (!showRef && !showSample) {
+    inner.innerHTML = `<div class="text-slate-500 text-xs italic p-2">${
+      !hasRef && !hasSample ? "Load a chart to see the a*b* gamut." :
+      mode === "sample"     ? "Load a sample chart." : "Load a reference chart."
+    }</div>`;
+    return;
+  }
+
+  const layout         = refLayoutMeta || sampleLayoutMeta
+                         || deriveSimpleLayout(refPatches || samplePatches);
+  const indexFields    = (layout && layout.indexFields)    || [];
+  const indexFieldMeta = (layout && layout.indexFieldMeta) || {};
+
+  // ── SVG layout ─────────────────────────────────────────────────────────────
+  const vW = 300, vH = 300;
+  const ml = 34, mr = 16, mt = 24, mb = 36;
+  const iW = vW - ml - mr;   // 250
+  const iH = vH - mt - mb;   // 240
+  const pH = Math.min(iW, iH) / 2;   // 120  (half-plot in px = 100 units)
+  const cx = ml + iW / 2;    // a* center (a*=0)
+  const sc = pH / 100;       // 1.2 px per unit (span 200 = 2*pH for both axes)
+
+  // b* axis: -80 to +120 (span 200, midpoint 20)
+  const B_MIN = -80, B_MAX = 120, bMid = (B_MIN + B_MAX) / 2; // 20
+  const cy = mt + iH / 2;    // svg y that maps to b* = bMid
+
+  const clipId = "clip-g5";
+
+  const ax = (a) => (cx + a * sc).toFixed(1);            // a* → svg x
+  const ay = (b) => (cy - (b - bMid) * sc).toFixed(1);  // b* → svg y (inverted)
+
+  // ── Palette ────────────────────────────────────────────────────────────────
+  const SC_FILL_G   = "rgba(52,211,153,0.20)";
+  const SC_STR_G    = "rgba(16,185,129,0.15)";
+  const SPIDER_G    = "rgba(52,211,153,0.85)";
+  const SC_FILL_O   = "rgba(251,146,60,0.20)";
+  const SC_STR_O    = "rgba(249,115,22,0.15)";
+  const SPIDER_O    = "rgba(251,146,60,0.85)";
+  const RAMP_O      = "#f97316";
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function isKField(f) {
+    const meta = indexFieldMeta[f];
+    if (meta && meta.inkName) {
+      const n = meta.inkName.toLowerCase();
+      if (n === "black" || n.startsWith("black")) return true;
+    }
+    return f === "CMYK_K" || shortChannelName(f, indexFieldMeta) === "K";
+  }
+  const nonKFields = indexFields.filter(f => !isKField(f));
+
+  function findWhitePatch(patches) {
+    if (!patches) return null;
+    return Object.values(patches).find(p =>
+      p.indexValues &&
+      Object.values(p.indexValues).every(v => typeof v === "number" && v < 0.5)
+    ) || null;
+  }
+
+  // Map<field, [{patch,value}]> — pure single non-K channel steps
+  function getPureRamps(patches) {
+    const ramps = new Map();
+    if (!patches) return ramps;
+    Object.values(patches).forEach(p => {
+      if (!isPureInkChannel(p)) return;
+      const f = Object.keys(p.indexValues || {}).find(
+        k => typeof p.indexValues[k] === "number" && p.indexValues[k] > 0
+      );
+      if (!f || isKField(f)) return;
+      if (!ramps.has(f)) ramps.set(f, []);
+      ramps.get(f).push({ patch: p, value: p.indexValues[f] });
+    });
+    return ramps;
+  }
+
+  // Build a hue-angle ordering of nonKFields derived from each ink's pure 100% patch.
+  // Returns an array of field names sorted by their hue angle (Math.atan2(b*, a*)).
+  function hueOrderedNonKFields(patches) {
+    const angleMap = new Map();
+    nonKFields.forEach(field => {
+      // Find the pure 100% patch for this field
+      const pure = Object.values(patches).find(p => {
+        if (!p.indexValues) return false;
+        const nkf = Object.keys(p.indexValues).filter(f => !isKField(f));
+        const hot = nkf.filter(f => p.indexValues[f] >= 99.5);
+        const cold = nkf.filter(f => p.indexValues[f] < 0.5);
+        return hot.length === 1 && hot[0] === field && cold.length === nkf.length - 1
+          && typeof p.a === "number" && typeof p.b === "number";
+      });
+      if (pure) angleMap.set(field, Math.atan2(pure.b, pure.a));
+    });
+    // Fields without a pure patch keep their original relative order (fallback)
+    return [...nonKFields].sort((a, b) => {
+      const ha = angleMap.has(a) ? angleMap.get(a) : 0;
+      const hb = angleMap.has(b) ? angleMap.get(b) : 0;
+      return ha - hb;
+    });
+  }
+
+  // [{a,b}] sorted by hue angle — pure 100% single or 100%+100% two-ink, no K.
+  // Two-color overprints are only included when the two inks are hue-adjacent
+  // (neighbors in hue-angle-sorted circular order).
+  function getSpiderCorners(patches) {
+    if (!patches) return [];
+    const hueOrdered = hueOrderedNonKFields(patches);
+    const n = hueOrdered.length;
+    const corners = [];
+    Object.values(patches).forEach(p => {
+      if (!p.indexValues) return;
+      const kFields = Object.keys(p.indexValues).filter(isKField);
+      if (kFields.some(f => p.indexValues[f] >= 0.5)) return;  // K must be 0
+      const nkf  = Object.keys(p.indexValues).filter(f => !isKField(f));
+      const hot  = nkf.filter(f => p.indexValues[f] >= 99.5);
+      const cold = nkf.filter(f => p.indexValues[f] <   0.5);
+      if (!((hot.length === 1 || hot.length === 2) && hot.length + cold.length === nkf.length)) return;
+      if (hot.length === 2) {
+        // Only include two-ink overprints when the two inks are hue-adjacent
+        const idxA = hueOrdered.indexOf(hot[0]);
+        const idxB = hueOrdered.indexOf(hot[1]);
+        if (idxA === -1 || idxB === -1) return;
+        const dist = Math.abs(idxA - idxB);
+        const wrap = n - dist;
+        if (Math.min(dist, wrap) > 1) return;
+      }
+      corners.push({ a: p.a, b: p.b });
+    });
+    corners.sort((x, y) => Math.atan2(x.b, x.a) - Math.atan2(y.b, y.a));
+    return corners;
+  }
+
+  // ── SVG fragment builders ──────────────────────────────────────────────────
+  function mkScatter(patches, fill, stroke) {
+    if (!patches) return "";
+    let s = "";
+    Object.values(patches).forEach(p => {
+      if (typeof p.a !== "number" || typeof p.b !== "number") return;
+      s += `<circle cx="${ax(p.a)}" cy="${ay(p.b)}" r="1.25"
+        fill="${fill}" stroke="${stroke}" stroke-width="0.5"/>`;
+    });
+    return s;
+  }
+
+  function mkRamps(patches, useTrueColor) {
+    if (!patches) return "";
+    const wp    = findWhitePatch(patches);
+    const ramps = getPureRamps(patches);
+    let out = "";
+    nonKFields.forEach(field => {
+      const steps = ramps.get(field);
+      if (!steps || !steps.length) return;
+      steps.sort((a, b) => a.value - b.value);
+
+      const color = useTrueColor
+        ? rgbToCSS(labToSRGB(steps[steps.length - 1].patch.L,
+                             steps[steps.length - 1].patch.a,
+                             steps[steps.length - 1].patch.b))
+        : RAMP_O;
+
+      const pts = [];
+      if (wp) pts.push([wp.a, wp.b]);
+      steps.forEach(s => pts.push([s.patch.a, s.patch.b]));
+      if (pts.length < 2) return;
+
+      const poly = pts.map(([a, b]) => `${ax(a)},${ay(b)}`).join(" ");
+      out += `<polyline points="${poly}" fill="none" stroke="${color}"
+        stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+      // Step dots (skip white point)
+      pts.slice(1).forEach(([a, b]) => {
+        out += `<circle cx="${ax(a)}" cy="${ay(b)}" r="2"
+          fill="${color}" stroke="rgba(255,255,255,0.3)" stroke-width="0.6"/>`;
+      });
+    });
+    return out;
+  }
+
+  function mkSpider(patches, color) {
+    if (!patches) return "";
+    const corners = getSpiderCorners(patches);
+    if (corners.length < 2) return "";
+    const pts   = corners.map(c => `${ax(c.a)},${ay(c.b)}`).join(" ");
+    const first = corners[0];
+    return `<polyline points="${pts} ${ax(first.a)},${ay(first.b)}"
+      fill="none" stroke="${color}" stroke-width="1.5"
+      stroke-linejoin="round" stroke-linecap="round"/>`;
+  }
+
+  function mkHighlight(patches, hid) {
+    if (!patches || !hid || !patches[hid]) return "";
+    const p = patches[hid];
+    if (typeof p.a !== "number" || typeof p.b !== "number") return "";
+    return `<circle cx="${ax(p.a)}" cy="${ay(p.b)}" r="7"
+        fill="none" stroke="rgba(239,68,68,0.5)" stroke-width="1.5"/>
+      <circle cx="${ax(p.a)}" cy="${ay(p.b)}" r="4"
+        fill="rgb(239,68,68)" stroke="rgb(255,255,255)" stroke-width="1"/>`;
+  }
+
+  function mkHull(patches, stroke) {
+    if (!patches) return "";
+    const pts = [];
+    Object.values(patches).forEach(p => {
+      if (typeof p.a === "number" && typeof p.b === "number") pts.push({ x: p.a, y: p.b });
+    });
+    const hull = convexHull(pts);
+    if (hull.length < 3) return "";
+    const poly = hull.map(p => `${ax(p.x)},${ay(p.y)}`).join(" ");
+    const first = hull[0];
+    return `<polyline points="${poly} ${ax(first.x)},${ay(first.y)}"
+      fill="none" stroke="${stroke}" stroke-width="0.75" opacity="0.55"/>`;
+  }
+
+  // ── Grid ───────────────────────────────────────────────────────────────────
+  let grid = "";
+  // Vertical lines (constant a*) span the full b* range
+  for (let a = -100; a <= 100; a += 25) {
+    const isZ = a === 0;
+    grid += `<line x1="${ax(a)}" y1="${ay(B_MAX)}" x2="${ax(a)}" y2="${ay(B_MIN)}"
+      stroke="${isZ ? "#334155" : "#1e293b"}" stroke-width="${isZ ? 0.9 : 0.5}"/>`;
+  }
+  // Horizontal lines (constant b*) span the full a* range
+  for (let b = B_MIN; b <= B_MAX; b += 25) {
+    const isZ = b === 0;
+    grid += `<line x1="${ax(-100)}" y1="${ay(b)}" x2="${ax(100)}" y2="${ay(b)}"
+      stroke="${isZ ? "#334155" : "#1e293b"}" stroke-width="${isZ ? 0.9 : 0.5}"/>`;
+  }
+
+  // Axis tick labels
+  let axLabels = "";
+  // a* ticks along the bottom edge
+  for (const a of [-100, -50, 0, 50, 100]) {
+    axLabels += `<text x="${ax(a)}" y="${(parseFloat(ay(B_MIN)) + 10).toFixed(1)}"
+      text-anchor="middle" fill="#475569" font-size="8">${a}</text>`;
+  }
+  // b* ticks along the left edge
+  for (const b of [-75, -50, -25, 0, 25, 50, 75, 100]) {
+    axLabels += `<text x="${(cx - pH - 4).toFixed(1)}" y="${ay(b)}"
+      text-anchor="end" dominant-baseline="middle" fill="#475569" font-size="8">${b}</text>`;
+  }
+
+  // ── Assemble per dataset ────────────────────────────────────────────────────
+  let scRef = "", hullRef = "", rampRef = "", spRef = "", hlRef = "";
+  let scSmp = "", hullSmp = "", rampSmp = "", spSmp = "", hlSmp = "";
+
+  if (showRef) {
+    scRef   = mkScatter(refPatches, SC_FILL_G, SC_STR_G);
+    hullRef = mkHull(refPatches, "rgba(52,211,153,0.55)");
+    rampRef = mkRamps(refPatches, true);
+    spRef   = mkSpider(refPatches, SPIDER_G);
+    hlRef   = mkHighlight(refPatches, highlightId);
+  }
+  if (showSample) {
+    scSmp   = mkScatter(samplePatches, SC_FILL_O, SC_STR_O);
+    hullSmp = mkHull(samplePatches, "rgba(251,146,60,0.55)");
+    rampSmp = mkRamps(samplePatches, false);
+    spSmp   = mkSpider(samplePatches, SPIDER_O);
+    hlSmp   = mkHighlight(samplePatches, highlightId);
+  }
+
+  // Clip rect covers the full plot area (a* ±100, b* B_MIN–B_MAX)
+  const clipX = ax(-100), clipY = ay(B_MAX);
+  const clipW = (pH * 2).toFixed(1), clipH = ((B_MAX - B_MIN) * sc).toFixed(1);
+
+  inner.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 ${vW} ${vH}" style="width:100%;height:100%;display:block;">
+    <defs>
+      <clipPath id="${clipId}">
+        <rect x="${clipX}" y="${clipY}" width="${clipW}" height="${clipH}"/>
+      </clipPath>
+    </defs>
+
+    <!-- Title -->
+    <text x="${cx.toFixed(1)}" y="16" text-anchor="middle"
+      fill="#cbd5e1" font-size="11" font-weight="600"
+      font-family="Quicksand,system-ui">a* / b* gamut</text>
+
+    <!-- Grid -->
+    ${grid}
+
+    <!-- Clipped content: sample first, ref on top; scatter → hull → ramps → spider → highlight -->
+    <g clip-path="url(#${clipId})">
+      ${scSmp}${scRef}
+      ${hullSmp}${hullRef}
+      ${rampSmp}${rampRef}
+      ${spSmp}${spRef}
+      ${hlSmp}${hlRef}
+    </g>
+
+    <!-- Tick labels (outside clip so they stay visible) -->
+    ${axLabels}
+
+    <!-- Axis name labels -->
+    <text x="${cx.toFixed(1)}" y="${(vH - 4).toFixed(1)}"
+      text-anchor="middle" fill="#64748b" font-size="10">← a* →</text>
+    <text transform="rotate(-90)"
+      x="${(-cy).toFixed(1)}" y="10"
+      text-anchor="middle" fill="#64748b" font-size="10">← b* →</text>
   </svg>`;
 }
 

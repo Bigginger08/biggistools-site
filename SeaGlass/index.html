@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Biggi's SeaGlass</title>
-  <link rel="icon" type="image/x-icon" href="/SeaGlass/assets/seaGlassFavicon2.png">
+  <link rel="icon" type="image/x-icon" href="/assets/seaGlassFavicon2.png">
 
 
   <!-- Tailwind via CDN -->
@@ -18,7 +18,7 @@
   <style>
       body {
         font-family: "Quicksand", system-ui;
-        background-image: url("/SeaGlass/assets/seaglass.jpg");
+        background-image: url("/assets/seaglass.jpg");
         background-size: cover;         /* nicely fills screen */
         background-position: center;    /* centers the image */
         background-attachment: fixed;   /* subtle parallax effect */
@@ -114,6 +114,43 @@
       display: block;
     }
 
+    .graph-dataset-toggle {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      display: flex;
+      border-radius: 5px;
+      overflow: hidden;
+      border: 1px solid rgba(71, 85, 105, 0.6);
+      z-index: 2;
+    }
+
+    .graph-dataset-toggle button {
+      padding: 1px 5px;
+      font-size: 9px;
+      font-family: inherit;
+      background: rgba(15, 23, 42, 0.7);
+      color: #94a3b8;
+      border: none;
+      cursor: pointer;
+      transition: background 0.1s, color 0.1s;
+      line-height: 1.6;
+    }
+
+    .graph-dataset-toggle button + button {
+      border-left: 1px solid rgba(71, 85, 105, 0.6);
+    }
+
+    .graph-dataset-toggle button:hover {
+      background: rgba(30, 41, 59, 0.95);
+      color: #e2e8f0;
+    }
+
+    .graph-dataset-toggle button.active {
+      background: rgba(5, 150, 105, 0.75);
+      color: #ecfdf5;
+    }
+
   </style>
 </head>
 
@@ -157,7 +194,7 @@
         <h1 class="text-5xl font-semibold font-barriecito mx-1">
           SeaGlass
         </h1>
-        <h3 class="text-xs font-quicksand">v260410</h3>
+        <h3 class="text-xs font-quicksand">v260411</h3>
         <h2 class="text-1xl font-semibold font-quicksand mx-4">
             View and compare your CGATS files
         </h2>
@@ -305,7 +342,7 @@
                 data-mode="refColors"
               >
                 <img
-                  src="/SeaGlass/assets/icon_Reference.png"
+                  src="/assets/icon_Reference.png"
                   alt="Reference colors"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -318,7 +355,7 @@
                 data-mode="sampleColors"
               >
                 <img
-                  src="/SeaGlass/assets/icon_Sample.png"
+                  src="/assets/icon_Sample.png"
                   alt="Sample colors"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -331,7 +368,7 @@
                 data-mode="deltaE"
               >
                 <img
-                  src="/SeaGlass/assets/icon_DeltaE.png"
+                  src="/assets/icon_DeltaE.png"
                   alt="ΔE heatmap"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -344,7 +381,7 @@
                 data-mode="deltaLab"
               >
                 <img
-                  src="/SeaGlass/assets/icon_DeltaLab.png"
+                  src="/assets/icon_DeltaLab.png"
                   alt="ΔLab coloring"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -357,7 +394,7 @@
                 data-mode="index"
               >
                 <img
-                  src="/SeaGlass/assets/icon_Channels.png"
+                  src="/assets/icon_Channels.png"
                   alt="Index values"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -370,7 +407,7 @@
                 data-mode="inkChannels"
               >
                 <img
-                  src="/SeaGlass/assets/icon_Inks.png"
+                  src="/assets/icon_Inks.png"
                   alt="Pure ink channels"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -383,7 +420,7 @@
                 data-mode="refRepeat"
               >
                 <img
-                  src="/SeaGlass/assets/icon_ReferenceRepeatability.png"
+                  src="/assets/icon_ReferenceRepeatability.png"
                   alt="Reference repeatability"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -396,7 +433,7 @@
                 data-mode="sampleRepeat"
               >
                 <img
-                  src="/SeaGlass/assets/icon_SampleRepeatability.png"
+                  src="/assets/icon_SampleRepeatability.png"
                   alt="Sample repeatability"
                   class="max-w-[70%] max-h-[70%]"
                 />
