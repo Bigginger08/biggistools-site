@@ -59,6 +59,7 @@ const indexControlsHint  = document.getElementById("indexControlsHint");
 
 const patchDetailsPanel  = document.getElementById("patchDetailsPanel");
 const deltaRanking       = document.getElementById("deltaRanking");
+const primariesPanel     = document.getElementById("primariesPanel");
 const chartContainer2    = document.getElementById("chartContainer"); // alias used below
 const graphContainer     = document.getElementById("graphContainer");
 const toggleChartView    = document.getElementById("toggleChartView");
@@ -1054,6 +1055,9 @@ function updateView() {
     chartContainer.appendChild(wrapper);
   });
 
+  // Render primaries sidebar
+  renderPrimariesPanel();
+
   // Render ΔE ranking sidebar
   renderDeltaRanking(deltaMap);
 
@@ -1219,6 +1223,150 @@ function renderDeltaRanking(deltaMap) {
 
     scroll.appendChild(entry);
   });
+}
+
+// -----------------------------------------------------------------------------
+// PRIMARIES PANEL
+// -----------------------------------------------------------------------------
+
+function renderPrimariesPanel() {
+  if (!primariesPanel) return;
+
+  if (!refPatches) {
+    primariesPanel.classList.add("hidden");
+    return;
+  }
+
+  primariesPanel.classList.remove("hidden");
+  primariesPanel.innerHTML = "";
+
+  const layout = refLayoutMeta || deriveSimpleLayout(refPatches);
+  const indexFields = (layout && layout.indexFields) || [];
+  const indexFieldMeta = (layout && layout.indexFieldMeta) || {};
+
+  // Collect all pure-ink patches, grouped by their single non-zero field
+  // groups: Map<fieldName, Array<{id, refPatch, value}>>
+  const groups = new Map();
+  indexFields.forEach((f) => groups.set(f, []));
+
+  Object.entries(refPatches).forEach(([id, rp]) => {
+    if (!isPureInkChannel(rp)) return;
+    const nonZeroField = Object.keys(rp.indexValues || {}).find(
+      (f) => typeof rp.indexValues[f] === "number" && rp.indexValues[f] > 0
+    );
+    if (!nonZeroField) return;
+    if (!groups.has(nonZeroField)) groups.set(nonZeroField, []);
+    groups.get(nonZeroField).push({ id, rp, value: rp.indexValues[nonZeroField] });
+  });
+
+  // Hide panel entirely if no pure ink patches exist
+  const hasPure = [...groups.values()].some((arr) => arr.length > 0);
+  if (!hasPure) {
+    primariesPanel.classList.add("hidden");
+    return;
+  }
+
+  // Title
+  const title = document.createElement("div");
+  title.className = "text-[10px] font-semibold text-slate-300 mb-0.5 text-center tracking-wide";
+  title.textContent = "Primaries";
+  primariesPanel.appendChild(title);
+
+  // Scrollable list
+  const scroll = document.createElement("div");
+  scroll.className = "flex flex-col gap-1 overflow-y-auto";
+  scroll.style.maxHeight = "calc(120vh - 20px)";
+  primariesPanel.appendChild(scroll);
+
+  // Render each channel group in CGATS field order
+  indexFields.forEach((field) => {
+    const patches = groups.get(field) || [];
+    if (!patches.length) return;
+
+    // Channel header
+    const abbr = shortChannelName(field, indexFieldMeta);
+    const groupHeader = document.createElement("div");
+    groupHeader.className =
+      "text-[9px] font-semibold text-slate-400 text-center mt-1 leading-tight tracking-wide";
+    groupHeader.textContent = abbr;
+    scroll.appendChild(groupHeader);
+
+    // Sort descending by value
+    patches.sort((a, b) => b.value - a.value);
+
+    patches.forEach(({ id, rp, value }) => {
+      const sp = samplePatches ? samplePatches[id] : null;
+      const refCss = rgbToCSS(labToSRGB(rp.L, rp.a, rp.b));
+      const sCss = sp ? rgbToCSS(labToSRGB(sp.L, sp.a, sp.b)) : null;
+
+      const entry = document.createElement("div");
+      entry.className =
+        "flex flex-col items-center gap-0.5 cursor-pointer rounded px-0.5 py-0.5 " +
+        "hover:bg-slate-700/50 transition-colors";
+      const titleStr = sp
+        ? `${id}: ${abbr}${Math.round(value)}%`
+        : `${id}: ${abbr}${Math.round(value)}%`;
+      entry.title = titleStr;
+
+      entry.addEventListener("click", () => {
+        // Clear previous ranking highlight
+        document.querySelectorAll(".patch-ranking-highlight").forEach((el) =>
+          el.classList.remove("patch-ranking-highlight")
+        );
+        if (selectedPatchElement) {
+          selectedPatchElement.classList.remove("patch-selected");
+          selectedPatchElement = null;
+        }
+        // Find patch in grid, highlight red, scroll into view
+        const patchEl = document.querySelector(`.patch-square[data-patch-id="${id}"]`);
+        if (patchEl) {
+          patchEl.classList.add("patch-ranking-highlight");
+          const header = document.querySelector("header");
+          const headerH = header ? header.getBoundingClientRect().bottom : 0;
+          const rect = patchEl.getBoundingClientRect();
+          const patchMidY = rect.top + rect.height / 2;
+          const visibleMidY = headerH + (window.innerHeight - headerH) / 2;
+          window.scrollBy({ top: patchMidY - visibleMidY, behavior: "smooth" });
+        }
+        highlightGraphPatch(id);
+        handlePatchClick(id);
+      });
+
+      // Color square(s)
+      const squares = document.createElement("div");
+      squares.className = "flex gap-1";
+
+      const refSq = document.createElement("div");
+      refSq.style.cssText =
+        `width:30px;height:30px;background:${refCss};` +
+        `border:1px solid rgba(255,255,255,0.18);border-radius:3px;flex-shrink:0;`;
+      squares.appendChild(refSq);
+
+      if (sCss) {
+        const sampleSq = document.createElement("div");
+        sampleSq.style.cssText =
+          `width:30px;height:30px;background:${sCss};` +
+          `border:1px solid rgba(255,255,255,0.18);border-radius:3px;flex-shrink:0;`;
+        squares.appendChild(sampleSq);
+      }
+
+      entry.appendChild(squares);
+
+      // Label: patch name + value
+      const nameEl = document.createElement("div");
+      nameEl.className = "text-[9px] text-slate-200 text-center leading-tight font-medium";
+      nameEl.textContent = `${abbr}${Math.round(value)}`;
+      entry.appendChild(nameEl);
+
+      const idEl = document.createElement("div");
+      idEl.className = "text-[8px] text-slate-400 text-center leading-tight";
+      idEl.textContent = id;
+      entry.appendChild(idEl);
+
+      scroll.appendChild(entry);
+    });
+  });
+
 }
 
 // -----------------------------------------------------------------------------
