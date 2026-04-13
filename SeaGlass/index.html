@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Biggi's SeaGlass</title>
-  <link rel="icon" type="image/x-icon" href="/SeaGlass/assets/seaGlassFavicon2.png">
+  <link rel="icon" type="image/x-icon" href="/assets/seaGlassFavicon2.png">
 
 
   <!-- Tailwind via CDN -->
@@ -18,7 +18,7 @@
   <style>
       body {
         font-family: "Quicksand", system-ui;
-        background-image: url("/SeaGlass/assets/seaglass.jpg");
+        background-image: url("/assets/seaglass.jpg");
         background-size: cover;         /* nicely fills screen */
         background-position: center;    /* centers the image */
         background-attachment: fixed;   /* subtle parallax effect */
@@ -342,7 +342,7 @@
                 data-mode="refColors"
               >
                 <img
-                  src="/SeaGlass/assets/icon_Reference.png"
+                  src="/assets/icon_Reference.png"
                   alt="Reference colors"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -355,7 +355,7 @@
                 data-mode="sampleColors"
               >
                 <img
-                  src="/SeaGlass/assets/icon_Sample.png"
+                  src="/assets/icon_Sample.png"
                   alt="Sample colors"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -368,7 +368,7 @@
                 data-mode="deltaE"
               >
                 <img
-                  src="/SeaGlass/assets/icon_DeltaE.png"
+                  src="/assets/icon_DeltaE.png"
                   alt="ΔE heatmap"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -381,7 +381,7 @@
                 data-mode="deltaLab"
               >
                 <img
-                  src="/SeaGlass/assets/icon_DeltaLab.png"
+                  src="/assets/icon_DeltaLab.png"
                   alt="ΔLab coloring"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -394,7 +394,7 @@
                 data-mode="index"
               >
                 <img
-                  src="/SeaGlass/assets/icon_Channels.png"
+                  src="/assets/icon_Channels.png"
                   alt="Index values"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -407,7 +407,7 @@
                 data-mode="inkChannels"
               >
                 <img
-                  src="/SeaGlass/assets/icon_Inks.png"
+                  src="/assets/icon_Inks.png"
                   alt="Pure ink channels"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -420,7 +420,7 @@
                 data-mode="refRepeat"
               >
                 <img
-                  src="/SeaGlass/assets/icon_ReferenceRepeatability.png"
+                  src="/assets/icon_ReferenceRepeatability.png"
                   alt="Reference repeatability"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -433,7 +433,7 @@
                 data-mode="sampleRepeat"
               >
                 <img
-                  src="/SeaGlass/assets/icon_SampleRepeatability.png"
+                  src="/assets/icon_SampleRepeatability.png"
                   alt="Sample repeatability"
                   class="max-w-[70%] max-h-[70%]"
                 />
@@ -447,6 +447,20 @@
             >
               Reference colors
             </div>
+
+                      <!-- Ink Channels dataset toggle (Ref / Smp) -->
+          <div
+            id="inkChannelsControls"
+            class="hidden flex-row items-center gap-1.5 text-xs text-slate-200"
+          >
+            <span class="text-[11px] text-slate-300">Show:</span>
+            <div class="flex rounded overflow-hidden border border-slate-600 text-[10px]">
+              <button id="inkChannelsBtnRef"
+                class="px-2 py-0.5 font-medium bg-emerald-700/70 text-emerald-100">Ref</button>
+              <button id="inkChannelsBtnSmp"
+                class="px-2 py-0.5 bg-slate-700 text-slate-300">Smp</button>
+            </div>
+          </div>
 
                       <!-- Index controls -->
           <div

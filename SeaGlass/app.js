@@ -27,6 +27,7 @@ const graphDatasetMode = {
   "graph-8": "both",
 };
 let viewMode = "refColors";      // "deltaE" | "deltaLab" | "refColors" | "sampleColors" | "index"
+let inkChannelsDataset = "ref";  // "ref" | "sample" — which dataset to show in inkChannels mode
 let selectedIndexField = null;   // e.g. "CMYK_C", "7CLR_1"
 let selectedPatchElement = null;
 
@@ -60,10 +61,13 @@ const statsPanel       = document.getElementById("statsPanel");
 const refFilesListEl    = document.getElementById("refFilesList");
 const sampleFilesListEl = document.getElementById("sampleFilesList");
 
-const viewModeControls   = document.getElementById("viewModeControls");
-const indexControls      = document.getElementById("indexControls");
-const indexChannelSelect = document.getElementById("indexChannelSelect");
-const indexControlsHint  = document.getElementById("indexControlsHint");
+const viewModeControls     = document.getElementById("viewModeControls");
+const indexControls        = document.getElementById("indexControls");
+const indexChannelSelect   = document.getElementById("indexChannelSelect");
+const indexControlsHint    = document.getElementById("indexControlsHint");
+const inkChannelsControls  = document.getElementById("inkChannelsControls");
+const inkChannelsBtnRef    = document.getElementById("inkChannelsBtnRef");
+const inkChannelsBtnSmp    = document.getElementById("inkChannelsBtnSmp");
 
 const patchDetailsPanel  = document.getElementById("patchDetailsPanel");
 const deltaRanking       = document.getElementById("deltaRanking");
@@ -99,6 +103,12 @@ if (headerToggleButton && headerControls) {
     // For heatmap legend: hide when collapsing; on expand let updateView re-evaluate
     if (isHidden && heatmapLegend) heatmapLegend.classList.add("hidden");
     if (!isHidden) updateView();
+
+    // If a graph is expanded, recalculate its height for the new visible area
+    if (expandedGraphId) {
+      // Use rAF so the DOM has reflowed and the new header height is settled
+      requestAnimationFrame(() => applyExpandedGraphHeight(expandedGraphId));
+    }
   });
 }
 
@@ -132,6 +142,8 @@ function setPrimaryView(mode) {
 
   // Reset any expanded graph when switching away from Graph View
   if (isChart && expandedGraphId) {
+    const graphGrid = document.getElementById("graphGrid");
+    if (graphGrid) { graphGrid.style.height = ""; graphGrid.style.gridTemplateRows = ""; }
     const cells = document.querySelectorAll(".graph-cell");
     cells.forEach((cell) => {
       cell.classList.remove("graph-expanded");
@@ -155,6 +167,23 @@ function setPrimaryView(mode) {
 
 if (toggleChartView) toggleChartView.addEventListener("click", () => setPrimaryView("chart"));
 if (toggleGraphView) toggleGraphView.addEventListener("click", () => setPrimaryView("graph"));
+
+// Ink-channels Ref / Smp toggle
+function setInkChannelsDataset(which) {
+  inkChannelsDataset = which;
+  if (inkChannelsBtnRef) {
+    const active = which === "ref";
+    inkChannelsBtnRef.className = active
+      ? "px-2 py-0.5 font-medium bg-emerald-700/70 text-emerald-100"
+      : "px-2 py-0.5 bg-slate-700 text-slate-300";
+    inkChannelsBtnSmp.className = !active
+      ? "px-2 py-0.5 font-medium bg-orange-700/70 text-orange-100"
+      : "px-2 py-0.5 bg-slate-700 text-slate-300";
+  }
+  updateView();
+}
+if (inkChannelsBtnRef) inkChannelsBtnRef.addEventListener("click", () => setInkChannelsDataset("ref"));
+if (inkChannelsBtnSmp) inkChannelsBtnSmp.addEventListener("click", () => setInkChannelsDataset("sample"));
 
 // -----------------------------------------------------------------------------
 // Clear buttons for reference and sample
@@ -212,6 +241,7 @@ if (clearSampleButton) {
     if (sampleInput) sampleInput.value = "";
     if (sampleFilesListEl) sampleFilesListEl.textContent = "";
 
+    inkChannelsDataset = "ref";
     // When sample is cleared but reference remains, we just fall back to ref-only view
     // (no ΔE stats, no sample colors).
     // Easiest: force view mode to reference colors and re-render.
@@ -302,6 +332,17 @@ function setViewMode(mode) {
     }
   }
 
+  // Ink-channels dataset toggle (only when sample is loaded)
+  if (inkChannelsControls) {
+    if (mode === "inkChannels" && samplePatches) {
+      inkChannelsControls.classList.remove("hidden");
+      inkChannelsControls.classList.add("flex");
+    } else {
+      inkChannelsControls.classList.add("hidden");
+      inkChannelsControls.classList.remove("flex");
+    }
+  }
+
   updateView();
 }
 
@@ -329,6 +370,17 @@ function updateModeButtonStates(hasSample) {
       }
     }
   });
+
+  // Show/hide ink-channels dataset toggle depending on sample availability
+  if (inkChannelsControls) {
+    if (hasSample && viewMode === "inkChannels") {
+      inkChannelsControls.classList.remove("hidden");
+      inkChannelsControls.classList.add("flex");
+    } else {
+      inkChannelsControls.classList.add("hidden");
+      inkChannelsControls.classList.remove("flex");
+    }
+  }
 }
 
 
@@ -823,11 +875,12 @@ function updateView() {
           "Colors show the ink/channel value (0–100%) for the selected index; select the channel above to change the view.";
       }
   } else if (showInkChannels) {
+    const inkDs = (inkChannelsDataset === "sample" && hasSample) ? "sample" : "reference";
     modeLabel.textContent = "Pure ink channel patches";
-    summaryEl.textContent = `Reference color · pure single-channel patches highlighted · Ref files: ${refCount}`;
+    summaryEl.textContent = `Showing ${inkDs} color · pure single-channel patches highlighted · Ref files: ${refCount}${hasSample ? ` · Sample files: ${sampleCount}` : ""}`;
       if (modeLegend) {
         modeLegend.textContent =
-          "Shows only patches with a single non-zero ink channel in their reference color; all other patches are dimmed.";
+          "Shows only patches with a single non-zero ink channel; all others dimmed. Toggle Ref/Smp above to compare datasets.";
       }
   } else if (showRefRepeat) {
     modeLabel.textContent = "Repeatability heatmap (reference)";
@@ -1016,18 +1069,21 @@ function updateView() {
         }
       } else if (showInkChannels) {
         const inkMeta = (layout && layout.indexFieldMeta) || {};
-        if (isPureInkChannel(rp)) {
-          const rgb = labToSRGB(rp.L, rp.a, rp.b);
+        const showSmp = inkChannelsDataset === "sample" && sp;
+        // A patch is "active" if the displayed dataset has a pure ink channel here
+        const activePatch = showSmp ? sp : rp;
+        if (isPureInkChannel(activePatch)) {
+          const rgb = labToSRGB(activePatch.L, activePatch.a, activePatch.b);
           bgColor = rgbToCSS(rgb);
-          const nonZeroField = Object.keys(rp.indexValues || {}).find(
-            (f) => typeof rp.indexValues[f] === "number" && rp.indexValues[f] > 0
+          const nonZeroField = Object.keys(activePatch.indexValues || {}).find(
+            (f) => typeof activePatch.indexValues[f] === "number" && activePatch.indexValues[f] > 0
           );
           if (nonZeroField) {
             const abbr = shortChannelName(nonZeroField, inkMeta);
-            text = `${abbr}${Math.round(rp.indexValues[nonZeroField])}`;
-            extraInfo = `Pure channel: ${text} · L*a*b*: ${rp.L.toFixed(1)}, ${rp.a.toFixed(1)}, ${rp.b.toFixed(1)}`;
+            text = `${abbr}${Math.round(activePatch.indexValues[nonZeroField])}`;
+            extraInfo = `Pure channel: ${text} · L*a*b*: ${activePatch.L.toFixed(1)}, ${activePatch.a.toFixed(1)}, ${activePatch.b.toFixed(1)}`;
           } else {
-            extraInfo = `L*a*b*: ${rp.L.toFixed(1)}, ${rp.a.toFixed(1)}, ${rp.b.toFixed(1)}`;
+            extraInfo = `L*a*b*: ${activePatch.L.toFixed(1)}, ${activePatch.a.toFixed(1)}, ${activePatch.b.toFixed(1)}`;
           }
         } else {
           bgColor = "rgba(15, 23, 42, 0.35)";
@@ -1070,11 +1126,11 @@ function updateView() {
   renderDeltaRanking(deltaMap);
 
   // Render graph view charts
-  renderGraph1(deltaMap, highlightedGraphPatchId);
-  renderBullseyePlot("graph-2", "da", "db", "← ∆a →", "← ∆b →", "∆a vs ∆b", highlightedGraphPatchId);
-  renderBullseyePlot("graph-3", "da", "dL", "← ∆a →", "← ∆L →", "∆a vs ∆L", highlightedGraphPatchId);
-  renderBullseyePlot("graph-4", "db", "dL", "← ∆b →", "← ∆L →", "∆b vs ∆L", highlightedGraphPatchId);
-  renderGraph5(highlightedGraphPatchId);
+  if (expandedGraphId) {
+    renderGraphById(expandedGraphId, highlightedGraphPatchId);
+  } else {
+    renderAllGraphs(highlightedGraphPatchId);
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -1304,7 +1360,18 @@ function renderPrimariesPanel() {
     patches.sort((a, b) => b.value - a.value);
 
     patches.forEach(({ id, rp, value }) => {
-      const sp = samplePatches ? samplePatches[id] : null;
+      // Match sample by channel value, not position — layouts may differ.
+      // Find a sample pure-ink patch with the same field at approximately the same value.
+      let sp = null;
+      if (samplePatches) {
+        sp = Object.values(samplePatches).find(p => {
+          if (!isPureInkChannel(p)) return false;
+          const f = Object.keys(p.indexValues || {}).find(
+            k => typeof p.indexValues[k] === "number" && p.indexValues[k] > 0
+          );
+          return f === field && Math.abs((p.indexValues[f] || 0) - value) < 0.5;
+        }) || null;
+      }
       const refCss = rgbToCSS(labToSRGB(rp.L, rp.a, rp.b));
       const sCss = sp ? rgbToCSS(labToSRGB(sp.L, sp.a, sp.b)) : null;
       const dE = sp ? deltaE2000(rp, sp) : null;
@@ -2573,22 +2640,68 @@ function initGraphDatasetToggles() {
 
 // Dispatches to the specific renderer for graphs 5–8 when the dataset toggle changes.
 function renderGraphByDataset(cellId) {
-  if (cellId === "graph-5") renderGraph5(highlightedGraphPatchId);
-  // graph-6, 7, 8 will be wired as their renderers are implemented
+  renderGraphById(cellId, highlightedGraphPatchId);
+}
+
+function renderAllGraphs(highlightId) {
+  const deltaMap = buildDeltaMap();
+  renderGraph1(deltaMap, highlightId);
+  renderBullseyePlot("graph-2", "da", "db", "← ∆a →", "← ∆b →", "∆a vs ∆b", highlightId);
+  renderBullseyePlot("graph-3", "da", "dL", "← ∆a →", "← ∆L →", "∆a vs ∆L", highlightId);
+  renderBullseyePlot("graph-4", "db", "dL", "← ∆b →", "← ∆L →", "∆b vs ∆L", highlightId);
+  renderGraph5(highlightId);
+}
+
+function renderGraphById(id, highlightId) {
+  const deltaMap = buildDeltaMap();
+  if (id === "graph-1") renderGraph1(deltaMap, highlightId);
+  else if (id === "graph-2") renderBullseyePlot("graph-2", "da", "db", "← ∆a →", "← ∆b →", "∆a vs ∆b", highlightId);
+  else if (id === "graph-3") renderBullseyePlot("graph-3", "da", "dL", "← ∆a →", "← ∆L →", "∆a vs ∆L", highlightId);
+  else if (id === "graph-4") renderBullseyePlot("graph-4", "db", "dL", "← ∆b →", "← ∆L →", "∆b vs ∆L", highlightId);
+  else if (id === "graph-5") renderGraph5(highlightId);
+}
+
+// Set the graphGrid height so an expanded cell fills exactly the current viewport.
+// The grid's top offset is measured at call time (after DOM reflow).
+function applyExpandedGraphHeight(id) {
+  const graphGrid = document.getElementById("graphGrid");
+  if (!graphGrid) return;
+
+  // Compute available vertical space from the grid's top edge to the viewport bottom
+  const gridRect = graphGrid.getBoundingClientRect();
+  const availableH = window.innerHeight - gridRect.top - 16; // 16px bottom breathing room
+  const clampedH = Math.max(300, availableH);
+
+  graphGrid.style.height = `${clampedH}px`;
+  graphGrid.style.gridTemplateRows = ""; // let expanded cell fill the fixed height
+
+  // Re-render the expanded graph so its SVG matches the new cell size
+  requestAnimationFrame(() => renderGraphById(id, highlightedGraphPatchId));
+}
+
+function collapseExpandedGraph() {
+  const graphGrid = document.getElementById("graphGrid");
+  if (graphGrid) {
+    graphGrid.style.height = "";
+    graphGrid.style.gridTemplateRows = "";
+  }
+  expandedGraphId = null;
+  const cells = document.querySelectorAll(".graph-cell");
+  cells.forEach((cell) => {
+    cell.classList.remove("graph-expanded");
+    cell.style.display = "";
+    const btn = cell.querySelector(".graph-expand-btn");
+    if (btn) { btn.title = "Expand"; btn.innerHTML = ICON_EXPAND; }
+  });
+  // Re-render all graphs at default size
+  renderAllGraphs(highlightedGraphPatchId);
 }
 
 function toggleGraphExpand(id) {
   const cells = document.querySelectorAll(".graph-cell");
 
   if (expandedGraphId === id) {
-    // Minimize — restore all cells
-    expandedGraphId = null;
-    cells.forEach((cell) => {
-      cell.classList.remove("graph-expanded");
-      cell.style.display = "";
-      const btn = cell.querySelector(".graph-expand-btn");
-      if (btn) { btn.title = "Expand"; btn.innerHTML = ICON_EXPAND; }
-    });
+    collapseExpandedGraph();
   } else {
     // Expand this cell, hide others
     expandedGraphId = id;
@@ -2602,18 +2715,18 @@ function toggleGraphExpand(id) {
         cell.style.display = "none";
       }
     });
+    // Size to current viewport, then render
+    requestAnimationFrame(() => applyExpandedGraphHeight(id));
   }
 }
 
 function highlightGraphPatch(id) {
   highlightedGraphPatchId = id;
-  // Re-render all four graphs with the new highlight
-  const deltaMap = buildDeltaMap();
-  renderGraph1(deltaMap, highlightedGraphPatchId);
-  renderBullseyePlot("graph-2", "da", "db", "← ∆a →", "← ∆b →", "∆a vs ∆b", highlightedGraphPatchId);
-  renderBullseyePlot("graph-3", "da", "dL", "← ∆a →", "← ∆L →", "∆a vs ∆L", highlightedGraphPatchId);
-  renderBullseyePlot("graph-4", "db", "dL", "← ∆b →", "← ∆L →", "∆b vs ∆L", highlightedGraphPatchId);
-  renderGraph5(highlightedGraphPatchId);
+  if (expandedGraphId) {
+    renderGraphById(expandedGraphId, highlightedGraphPatchId);
+  } else {
+    renderAllGraphs(highlightedGraphPatchId);
+  }
 }
 
 function buildDeltaMap() {
