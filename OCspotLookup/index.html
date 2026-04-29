@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="shortcut icon" href="/images/Icon_OpCo.ico">
+  <title>OC SpotColor Lookup</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="app-header">
+      <div>
+        <img src="images/OcLogo.e9fd8926.png" class="App-logo" alt="logo">
+      </div>
+      <div>
+        <h1>OpenColor SpotColor Lookup</h1>
+        <p>Connect to a local GMG OpenColor, filter projects, select candidates, see how well you can match.</p>
+      </div>
+      <div class="status-pill" id="connectionStatus">Not connected</div>
+    </header>
+
+    <div class="two-column-layout">
+      <section class="panel connection-panel">
+        <div class="panel-title">
+          <h2>1. Connection</h2>
+          <p>Enter OpenColor's IP & port. Example: <code>192.168.1.50:8080</code></p>
+        </div>
+
+        <div class="connection-row">
+          <label>
+            API host
+            <input id="hostInput" type="text" placeholder="192.168.1.50:8080" autocomplete="off" />
+          </label>
+
+          <button id="connectButton" class="primary-button">Connect & Load Projects</button>
+        </div>
+      </section>
+
+
+      <section class="panel settings-panel">
+        <div class="panel-title">
+          <h2>2. ∆E Thresholds</h2>
+          <p>Set your thresholds for green = good, orange = ok. All others will be red.</p>
+        </div>
+
+        <div class="threshold-row">
+          <label>
+            Green ≤ ∆E
+            <input id="greenThresholdInput" type="number" min="0" step="0.1" value="2" />
+          </label>
+
+          <label>
+            Orange ≤ ∆E
+            <input id="orangeThresholdInput" type="number" min="0" step="0.1" value="3" />
+          </label>
+        </div>
+      </section>
+    </div>
+
+
+    <div class="two-column-layout">
+      <section class="panel filter-panel">
+        <div class="panel-title">
+          <h2>3. Filter & Select Projects</h2>
+          <p>Search for a project name, keyword, process, or media. Then select projects for the color lookup.</p>
+        </div>
+
+        <div class="filter-grid">
+          <label>
+            Search
+            <input id="globalSearchInput" type="search" placeholder="Search project name, media, process, keywords..." />
+          </label>
+
+          <label>
+            Column
+            <select id="columnFilterSelect">
+              <option value="all">All columns</option>
+              <option value="projectName">Project Name</option>
+              <option value="lastChangedDisplay">Last Changed</option>
+              <option value="printProcess">Print Process</option>
+              <option value="media">Media</option>
+              <option value="keywords">Keywords</option>
+            </select>
+          </label>
+
+          <div class="selection-actions">
+            <button id="selectVisibleButton" class="secondary-button">Select Visible</button>
+            <button id="clearSelectionButton" class="secondary-button">Clear Selection</button>
+          </div>
+        </div>
+
+        <div class="hint-box" id="selectionHint">
+          Load projects first. Then filter the list and select projects before running the ∆E lookup.
+        </div>
+      </section>
+
+      <section class="panel colors-panel">
+        <div class="panel-title">
+          <h2>4. Requested Colors</h2>
+          <p>Enter one color per line. Fuzzy matching ignores case, spaces, and punctuation. Example: <code>Pantone 186</code></p>
+        </div>
+
+        <textarea id="colorInput" rows="5" placeholder="PANTONE 186 C&#10;Pantone 129&#10;Pantone 6019"></textarea>
+
+        <div class="lookup-actions">
+          <button id="runLookupButton" class="primary-button">Run ∆E Lookup for Selected Projects</button>
+          <button id="clearResultsButton" class="secondary-button">Clear ∆E Results</button>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel table-panel">
+      <div class="table-toolbar">
+        <div>
+          <h2>Projects</h2>
+          <p id="tableSummary">No projects loaded.</p>
+        </div>
+        <div id="loadingIndicator" class="loading hidden">Loading…</div>
+      </div>
+
+      <div class="table-wrap">
+        <table id="projectsTable">
+          <thead id="tableHead"></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
