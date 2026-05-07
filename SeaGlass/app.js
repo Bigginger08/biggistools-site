@@ -2016,6 +2016,137 @@ async function loadMultipleCgats(files) {
   return { patchMap: averagedPatchMap, layoutMeta, fileNames };
 }
 
+// Spectral tables covering 380–730 nm at 10 nm steps (36 entries, index 0 = 380 nm).
+// Values match the reference VBA implementation exactly.
+
+// CIE 1931 2° standard observer color matching functions x̄(λ)
+const CMF_X = [
+  0.00137, 0.00424, 0.01431, 0.04351, 0.13438, 0.2839,  0.34828, 0.3362,  0.2908,  0.19536,
+  0.09564, 0.03201, 0.0049,  0.0093,  0.06327, 0.1655,  0.2904,  0.43345, 0.5945,  0.7621,
+  0.9163,  1.0263,  1.0622,  1.0026,  0.85445, 0.6424,  0.4479,  0.2835,  0.1649,  0.0874,
+  0.04677, 0.0227,  0.01136, 0.00579, 0.0029,  0.00144,
+];
+// CIE 1931 2° standard observer color matching functions ȳ(λ)
+const CMF_Y = [
+  0.00004, 0.00012, 0.0004,  0.00121, 0.004,   0.0116,  0.023,   0.038,   0.06,    0.09098,
+  0.13902, 0.20802, 0.323,   0.503,   0.71,    0.862,   0.954,   0.99495, 0.995,   0.952,
+  0.87,    0.757,   0.631,   0.503,   0.381,   0.265,   0.175,   0.107,   0.061,   0.032,
+  0.017,   0.00821, 0.0041,  0.00209, 0.00105, 0.00052,
+];
+// CIE 1931 2° standard observer color matching functions z̄(λ)
+const CMF_Z = [
+  0.00645, 0.02005, 0.06785, 0.2074,  0.6456,  1.3856,  1.74706, 1.77211, 1.6692,  1.28764,
+  0.81295, 0.46518, 0.272,   0.1582,  0.07825, 0.04216, 0.0203,  0.00875, 0.0039,  0.0021,
+  0.00165, 0.0011,  0.0008,  0.00034, 0.00019, 0.00005, 0.00002, 0,       0,       0,
+  0,       0,       0,       0,       0,       0,
+];
+// D50 illuminant relative SPD (normalized to 100 at 560 nm)
+const D50_SPD = [
+   24.5,  29.8,  49.3,  56.5,  60.0,  57.8,  74.8,  87.2,  90.6,  91.4,
+   95.2,  92.0,  95.7,  96.6,  97.1, 102.1, 100.8, 102.3, 100.0,  97.7,
+   98.9,  93.5,  97.7,  99.3,  99.0,  95.7,  98.8,  95.7,  98.2, 103.0,
+   99.1,  87.4,  91.6,  92.9,  76.8,  86.6,
+];
+// Base wavelength for all spectral tables above
+const SPEC_TABLE_START_NM = 380;
+const SPEC_TABLE_END_NM   = 730;
+
+// Detect spectral reflectance columns in a CGATS DATA_FORMAT field list.
+// Returns { startNm, endNm, colMap: Map<nm → colIndex> } or null.
+function detectSpectralColumns(fields) {
+  const patterns = [
+    /^SPEC_(\d+)$/i,
+    /^R(\d+)$/,
+    /^NM_(\d+)$/i,
+    /^(\d+)nm$/i,
+  ];
+
+  const colMap = new Map();
+  for (let i = 0; i < fields.length; i++) {
+    for (const re of patterns) {
+      const m = fields[i].match(re);
+      if (m) {
+        const nm = parseInt(m[1], 10);
+        if (nm >= 300 && nm <= 830) colMap.set(nm, i);
+        break;
+      }
+    }
+  }
+
+  if (colMap.size < 2) return null;
+
+  const wavelengths = [...colMap.keys()].sort((a, b) => a - b);
+  const startNm = wavelengths[0];
+  const endNm = wavelengths[wavelengths.length - 1];
+
+  // Validate start/end and uniform 10 nm step
+  if (![360, 380, 400].includes(startNm)) return null;
+  if (![700, 730, 750].includes(endNm)) return null;
+  for (let i = 1; i < wavelengths.length; i++) {
+    if (wavelengths[i] - wavelengths[i - 1] !== 10) return null;
+  }
+
+  return { startNm, endNm, colMap };
+}
+
+// Convert spectral reflectance (from one CGATS data row) to CIE L*a*b* under D50/2°.
+// Port of the VBA TripleFromSpectrum function (Lichtart="D50", Beobachter="2°").
+// colMap: Map<nm → colIndex>, parts: string[] of the split data row.
+// Wavelengths outside 380–730 nm are ignored (negligible contribution).
+// Returns { L, a, b } or null if spectral values are missing/invalid.
+function spectralToLab(colMap, parts) {
+  // Collect reflectance values, skip wavelengths outside the table range
+  const reflByNm = new Map();
+  for (const [nm, colIdx] of colMap) {
+    if (nm < SPEC_TABLE_START_NM || nm > SPEC_TABLE_END_NM) continue;
+    const v = parseFloat(parts[colIdx]);
+    if (Number.isNaN(v)) return null;
+    reflByNm.set(nm, v);
+  }
+  if (reflByNm.size === 0) return null;
+
+  // Auto-detect 0–1 vs 0–100 scale
+  const scale = [...reflByNm.values()].some(v => v > 1.5) ? 0.01 : 1.0;
+
+  let sumX = 0, sumY = 0, sumZ = 0;
+  let sumXN = 0, sumYN = 0, sumZN = 0;
+  let sumK = 0;
+
+  for (const [nm, rawVal] of reflByNm) {
+    const i = (nm - SPEC_TABLE_START_NM) / 10; // 0-based table index
+    const R   = rawVal * scale;
+    const spd = D50_SPD[i];
+    const xb  = CMF_X[i];
+    const yb  = CMF_Y[i];
+    const zb  = CMF_Z[i];
+    const stimulus = R * spd;
+    sumX  += stimulus * xb;
+    sumY  += stimulus * yb;
+    sumZ  += stimulus * zb;
+    sumXN += spd * xb;
+    sumYN += spd * yb;
+    sumZN += spd * zb;
+    sumK  += spd * yb;   // VBA: Gewichtsfaktor
+  }
+
+  if (sumK === 0) return null;
+
+  const K  = 100 / sumK;
+  const X  = K * sumX;
+  const Y  = K * sumY;
+  const Z  = K * sumZ;
+  const Xn = K * sumXN;
+  const Yn = K * sumYN;
+  const Zn = K * sumZN;
+
+  const f = t => t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 0.138;
+
+  return {
+    L: 116 * f(Y / Yn) - 16,
+    a: 500 * (f(X / Xn) - f(Y / Yn)),
+    b: 200 * (f(Y / Yn) - f(Z / Zn)),
+  };
+}
 
 
 function parseCgats(text) {
@@ -2123,9 +2254,12 @@ function parseCgats(text) {
   const aIndex = indexOfAny(upperFields, ["LAB_A", "A*", "A"]) ?? -1;
   const bIndex = indexOfAny(upperFields, ["LAB_B", "B*", "B"]) ?? -1;
 
-  if (LIndex < 0 || aIndex < 0 || bIndex < 0) {
+  const hasLab = LIndex >= 0 && aIndex >= 0 && bIndex >= 0;
+  const spectralInfo = hasLab ? null : detectSpectralColumns(formatFields);
+
+  if (!hasLab && !spectralInfo) {
     throw new Error(
-      "Could not find Lab fields (LAB_L/LAB_A/LAB_B or L*/A*/B*)."
+      "Could not find Lab fields (LAB_L/LAB_A/LAB_B or L*/A*/B*) and no supported spectral columns detected."
     );
   }
 
@@ -2184,10 +2318,17 @@ function parseCgats(text) {
     const parts = line.split(/\s+/).filter(Boolean);
     if (!parts.length) continue;
 
-    const L = parseFloat(parts[LIndex]);
-    const a = parseFloat(parts[aIndex]);
-    const b = parseFloat(parts[bIndex]);
-    if (Number.isNaN(L) || Number.isNaN(a) || Number.isNaN(b)) continue;
+    let L, a, b;
+    if (hasLab) {
+      L = parseFloat(parts[LIndex]);
+      a = parseFloat(parts[aIndex]);
+      b = parseFloat(parts[bIndex]);
+      if (Number.isNaN(L) || Number.isNaN(a) || Number.isNaN(b)) continue;
+    } else {
+      const lab = spectralToLab(spectralInfo.colMap, parts);
+      if (lab == null) continue;
+      ({ L, a, b } = lab);
+    }
 
     let id;
     if (idIndex >= 0 && parts[idIndex] !== undefined) {
