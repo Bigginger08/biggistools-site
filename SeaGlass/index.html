@@ -110,6 +110,13 @@
       z-index: 1;
     }
 
+    .patch-square.patch-search-match {
+      outline: 2px solid #22c55e;
+      outline-offset: 1px;
+      box-shadow: 0 0 8px rgba(34,197,94,0.75);
+      z-index: 2;
+    }
+
     .mode-icon-btn img {
       display: block;
     }
@@ -194,7 +201,7 @@
         <h1 class="text-5xl font-semibold font-barriecito mx-1">
           SeaGlass
         </h1>
-        <h3 class="text-xs font-quicksand">v260507</h3>
+        <h3 class="text-xs font-quicksand">v260508</h3>
         <h2 class="text-1xl font-semibold font-quicksand mx-4">
             View and compare your CGATS files
         </h2>
@@ -438,6 +445,21 @@
                   class="max-w-[70%] max-h-[70%]"
                 />
               </button>
+
+              <!-- Divider -->
+              <div class="w-px h-6 bg-slate-600 mx-1 self-center"></div>
+
+              <!-- Search patches -->
+              <button
+                id="searchToggleBtn"
+                type="button"
+                class="w-10 h-10 rounded-xl border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform"
+                title="Search patches by index values"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-slate-300">
+                  <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd"/>
+                </svg>
+              </button>
             </div>
 
             <!-- Caption for currently-selected mode -->
@@ -531,6 +553,28 @@
               Click on a patch in the chart to inspect its Lab values, ΔE, index channels, repeatability, and more.
             </div>
           </div>
+
+      <!-- Search panel (hidden by default, toggled by searchToggleBtn) -->
+      <div
+        id="searchPanel"
+        class="hidden flex-col gap-2 border-t border-slate-700/50 pt-2 pb-2"
+      >
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-xs text-slate-400 font-medium shrink-0">Search patches:</span>
+          <div id="searchInputs" class="flex flex-wrap gap-2">
+            <!-- populated dynamically by buildSearchPanel() -->
+          </div>
+          <button
+            id="clearSearchBtn"
+            type="button"
+            class="shrink-0 px-2 py-0.5 text-xs rounded-full border border-slate-600
+                   bg-slate-800/80 text-slate-200 hover:bg-slate-700/80"
+          >
+            ✕ Clear
+          </button>
+          <span id="searchResultCount" class="text-xs text-emerald-400"></span>
+        </div>
+      </div>
 
     </div>
   </header>

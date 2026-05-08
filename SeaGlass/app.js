@@ -30,6 +30,7 @@ let viewMode = "refColors";      // "deltaE" | "deltaLab" | "refColors" | "sampl
 let inkChannelsDataset = "ref";  // "ref" | "sample" — which dataset to show in inkChannels mode
 let selectedIndexField = null;   // e.g. "CMYK_C", "7CLR_1"
 let selectedPatchElement = null;
+let searchMatchedIds = new Set();
 
 // Index-channel metadata (from LGOMCCHANNELxx header lines)
 const indexFieldLabMap = {};     // key: channel name (e.g. "7CLR_1") → { L, a, b }
@@ -83,7 +84,12 @@ const clearSampleButton  = document.getElementById("clearSampleButton");
 const modeLegend = document.getElementById("modeLegend");
 const heatmapLegend      = document.getElementById("heatmapLegend");
 const heatmapLegendLabel = document.getElementById("heatmapLegendLabel");
-const viewModeCaption  = document.getElementById("viewModeCaption");
+const viewModeCaption    = document.getElementById("viewModeCaption");
+const searchToggleBtn    = document.getElementById("searchToggleBtn");
+const searchPanel        = document.getElementById("searchPanel");
+const searchInputsEl     = document.getElementById("searchInputs");
+const clearSearchBtn     = document.getElementById("clearSearchBtn");
+const searchResultCount  = document.getElementById("searchResultCount");
 
 // -----------------------------------------------------------------------------
 // Header collapse / expand
@@ -228,6 +234,8 @@ if (clearRefButton) {
         </div>
       `;
     }
+    searchMatchedIds = new Set();
+    buildSearchPanel();
   });
 }
 
@@ -247,10 +255,38 @@ if (clearSampleButton) {
     // Easiest: force view mode to reference colors and re-render.
     viewMode = "refColors";
     setViewMode("refColors"); // will call updateView() and reset stats message
+    searchMatchedIds = new Set();
+    buildSearchPanel();
   });
 }
 
+// Search toggle
+if (searchToggleBtn && searchPanel) {
+  searchToggleBtn.addEventListener("click", () => {
+    const isHidden = searchPanel.classList.contains("hidden");
+    searchPanel.classList.toggle("hidden", !isHidden);
+    searchPanel.classList.toggle("flex", isHidden);
+    if (isHidden) {
+      const firstInput = searchPanel.querySelector("input");
+      if (firstInput) firstInput.focus();
+    }
+    searchToggleBtn.classList.toggle("bg-emerald-700/60", isHidden);
+    searchToggleBtn.classList.toggle("border-emerald-500", isHidden);
+  });
+}
 
+// Clear search
+if (clearSearchBtn) {
+  clearSearchBtn.addEventListener("click", () => {
+    if (searchInputsEl) {
+      searchInputsEl.querySelectorAll("input").forEach(inp => { inp.value = ""; });
+    }
+    searchMatchedIds = new Set();
+    if (searchResultCount) searchResultCount.textContent = "";
+    applySearchHighlights();
+    reRenderGraphsForSearch();
+  });
+}
 
 // -----------------------------------------------------------------------------
 // VIEW MODE BUTTONS
@@ -436,6 +472,8 @@ if (refInput) {
         } else {
           updateView();
         }
+        searchMatchedIds = new Set();
+        buildSearchPanel();
       })
       .catch((err) => {
         console.error(err);
@@ -469,6 +507,8 @@ if (sampleInput) {
         } else {
           updateView();
         }
+        searchMatchedIds = new Set();
+        buildSearchPanel();
       })
       .catch((err) => {
         console.error(err);
@@ -1131,6 +1171,8 @@ function updateView() {
   } else {
     renderAllGraphs(highlightedGraphPatchId);
   }
+
+  applySearchHighlights();
 }
 
 // -----------------------------------------------------------------------------
@@ -1808,6 +1850,125 @@ function refreshIndexControls() {
   if (indexControlsHint) {
     indexControlsHint.textContent =
       "Coloring is driven by the selected channel's 0–100% value (0% = light, 100% = dark).";
+  }
+}
+
+// -----------------------------------------------------------------------------
+// PATCH SEARCH
+// -----------------------------------------------------------------------------
+
+function getActivePatchesForSearch() {
+  const sampleModes = ["sampleColors", "sampleRepeat"];
+  if (sampleModes.includes(viewMode)) return samplePatches || refPatches;
+  if (viewMode === "inkChannels" && inkChannelsDataset === "sample")
+    return samplePatches || refPatches;
+  return refPatches || samplePatches;
+}
+
+function buildSearchPanel() {
+  if (!searchInputsEl) return;
+  searchInputsEl.innerHTML = "";
+  if (searchResultCount) searchResultCount.textContent = "";
+
+  const layout = (refLayoutMeta && refLayoutMeta.indexFields && refLayoutMeta.indexFields.length)
+    ? refLayoutMeta
+    : sampleLayoutMeta;
+  const fields = (layout && layout.indexFields) || [];
+  const metaMap = (layout && layout.indexFieldMeta) || {};
+
+  if (!fields.length) {
+    searchInputsEl.innerHTML =
+      '<span class="text-xs text-slate-500 italic">No index columns in loaded file(s).</span>';
+    return;
+  }
+
+  fields.forEach(name => {
+    const label = document.createElement("label");
+    label.className = "flex items-center gap-1 text-xs text-slate-300";
+
+    const meta = metaMap[name];
+    const displayName = (meta && meta.inkName) ? meta.inkName : shortChannelName(name, metaMap);
+
+    const span = document.createElement("span");
+    span.className = "text-slate-400 text-[11px]";
+    span.textContent = displayName + ":";
+
+    const input = document.createElement("input");
+    input.type = "number";
+    input.dataset.channel = name;
+    input.placeholder = "—";
+    input.className =
+      "w-16 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-xs text-slate-100";
+    input.style.appearance = "textfield";
+    input.style.MozAppearance = "textfield";
+    input.addEventListener("input", runPatchSearch);
+
+    label.appendChild(span);
+    label.appendChild(input);
+    searchInputsEl.appendChild(label);
+  });
+}
+
+function runPatchSearch() {
+  if (!searchInputsEl) return;
+  const inputs = [...searchInputsEl.querySelectorAll("input[data-channel]")];
+  const criteria = {};
+  let anyFilled = false;
+
+  inputs.forEach(inp => {
+    const val = inp.value.trim();
+    if (val !== "") {
+      criteria[inp.dataset.channel] = parseFloat(val);
+      anyFilled = true;
+    }
+  });
+
+  searchMatchedIds = new Set();
+
+  if (!anyFilled) {
+    if (searchResultCount) searchResultCount.textContent = "";
+    applySearchHighlights();
+    reRenderGraphsForSearch();
+    return;
+  }
+
+  const patches = getActivePatchesForSearch();
+  if (!patches) {
+    if (searchResultCount) searchResultCount.textContent = "";
+    applySearchHighlights();
+    reRenderGraphsForSearch();
+    return;
+  }
+
+  Object.entries(patches).forEach(([id, patch]) => {
+    const iv = patch.indexValues || {};
+    const matches = Object.entries(criteria).every(([ch, target]) => iv[ch] === target);
+    if (matches) searchMatchedIds.add(id);
+  });
+
+  if (searchResultCount) {
+    const n = searchMatchedIds.size;
+    searchResultCount.textContent = n === 0 ? "No patches found" : `${n} patch${n === 1 ? "" : "es"} found`;
+  }
+
+  applySearchHighlights();
+  reRenderGraphsForSearch();
+}
+
+function applySearchHighlights() {
+  document.querySelectorAll(".patch-search-match")
+    .forEach(el => el.classList.remove("patch-search-match"));
+  searchMatchedIds.forEach(id => {
+    const el = document.querySelector(`[data-patchId="${id}"]`);
+    if (el) el.classList.add("patch-search-match");
+  });
+}
+
+function reRenderGraphsForSearch() {
+  if (expandedGraphId) {
+    renderGraphById(expandedGraphId, highlightedGraphPatchId);
+  } else {
+    renderAllGraphs(highlightedGraphPatchId);
   }
 }
 
@@ -2993,6 +3154,24 @@ function renderBullseyePlot(graphId, xKey, yKey, xLabel, yLabel, title, highligh
       fill="rgba(52,211,153,0.65)" stroke="rgba(16,185,129,0.35)" stroke-width="0.8"/>`;
   });
 
+  // ── Search match dots ─────────────────────────────────────────────────────
+  let searchDots = "";
+  if (searchMatchedIds.size > 0) {
+    Object.keys(refPatches).forEach((id) => {
+      if (!searchMatchedIds.has(id)) return;
+      const ref    = refPatches[id];
+      const sample = samplePatches?.[id];
+      if (!ref || !sample) return;
+      const vals = { dL: sample.L - ref.L, da: sample.a - ref.a, db: sample.b - ref.b };
+      const x = vals[xKey], y = vals[yKey];
+      if (isNaN(x) || isNaN(y)) return;
+      const px = (cx + x * scale).toFixed(1);
+      const py = (cy - y * scale).toFixed(1);
+      searchDots += `<circle cx="${px}" cy="${py}" r="4.5"
+        fill="rgba(34,197,94,0.9)" stroke="white" stroke-width="1"/>`;
+    });
+  }
+
   // ── Highlight dot ─────────────────────────────────────────────────────────
   let highlightDot = "";
   if (highlightPt) {
@@ -3037,7 +3216,7 @@ function renderBullseyePlot(graphId, xKey, yKey, xLabel, yLabel, title, highligh
     ${ringLabels}
 
     <!-- Data points, clipped to plot circle -->
-    <g clip-path="url(#${clipId})">${dots}${highlightDot}</g>
+    <g clip-path="url(#${clipId})">${dots}${searchDots}${highlightDot}</g>
 
     <!-- Axis labels -->
     <text x="${cx.toFixed(1)}" y="${(vH - 4).toFixed(1)}"
@@ -3149,6 +3328,20 @@ function renderGraph1(deltaMap, highlightId = null) {
         fill="#f59e0b" font-size="10" font-weight="bold">${crossPct.toFixed(1)}%</text>`;
   }
 
+  // ── Search match markers on CDF ───────────────────────────────────────────
+  let searchMarkup = "";
+  if (searchMatchedIds.size > 0) {
+    Object.entries(deltaMap).forEach(([id, dE]) => {
+      if (!searchMatchedIds.has(id) || dE == null) return;
+      const rank = values.filter(v => v <= dE).length;
+      const pct  = rank / n * 100;
+      const sx = xPos(pct).toFixed(1);
+      const sy = yPos(dE).toFixed(1);
+      searchMarkup += `<circle cx="${sx}" cy="${sy}" r="3.5"
+        fill="rgba(34,197,94,0.9)" stroke="white" stroke-width="0.8"/>`;
+    });
+  }
+
   // ── Highlighted patch marker ──────────────────────────────────────────────
   let highlightMarkup = "";
   if (highlightId && deltaMap[highlightId] != null) {
@@ -3204,6 +3397,9 @@ function renderGraph1(deltaMap, highlightId = null) {
 
     <!-- Crossing annotation -->
     ${crossingMarkup}
+
+    <!-- Search match dots -->
+    ${searchMarkup}
 
     <!-- Highlighted patch -->
     ${highlightMarkup}
@@ -3507,6 +3703,21 @@ function renderGraph5(highlightId = null) {
     hlSmp   = mkHighlight(samplePatches, highlightId);
   }
 
+  // ── Search match dots for a*b* gamut ───────────────────────────────────────
+  function mkSearchDots(patches) {
+    if (!patches) return "";
+    let out = "";
+    searchMatchedIds.forEach(id => {
+      const p = patches[id];
+      if (!p || typeof p.a !== "number" || typeof p.b !== "number") return;
+      out += `<circle cx="${ax(p.a)}" cy="${ay(p.b)}" r="4.5"
+        fill="rgba(34,197,94,0.9)" stroke="white" stroke-width="1"/>`;
+    });
+    return out;
+  }
+  const sdRef = showRef    ? mkSearchDots(refPatches)    : "";
+  const sdSmp = showSample ? mkSearchDots(samplePatches) : "";
+
   // Clip rect covers the full plot area (a* ±100, b* B_MIN–B_MAX)
   const clipX = ax(-100), clipY = ay(B_MAX);
   const clipW = (pH * 2).toFixed(1), clipH = ((B_MAX - B_MIN) * sc).toFixed(1);
@@ -3527,12 +3738,13 @@ function renderGraph5(highlightId = null) {
     <!-- Grid -->
     ${grid}
 
-    <!-- Clipped content: sample first, ref on top; scatter → hull → ramps → spider → highlight -->
+    <!-- Clipped content: sample first, ref on top; scatter → hull → ramps → spider → search → highlight -->
     <g clip-path="url(#${clipId})">
       ${scSmp}${scRef}
       ${hullSmp}${hullRef}
       ${rampSmp}${rampRef}
       ${spSmp}${spRef}
+      ${sdSmp}${sdRef}
       ${hlSmp}${hlRef}
     </g>
 
