@@ -31,6 +31,7 @@ let inkChannelsDataset = "ref";  // "ref" | "sample" — which dataset to show i
 let selectedIndexField = null;   // e.g. "CMYK_C", "7CLR_1"
 let selectedPatchElement = null;
 let searchMatchedIds = new Set();
+let graph6ChannelToggles = {}; // fieldName → boolean (true = visible)
 
 // Index-channel metadata (from LGOMCCHANNELxx header lines)
 const indexFieldLabMap = {};     // key: channel name (e.g. "7CLR_1") → { L, a, b }
@@ -2952,6 +2953,7 @@ function renderAllGraphs(highlightId) {
   renderBullseyePlot("graph-3", "da", "dL", "← ∆a →", "← ∆L →", "∆a vs ∆L", highlightId);
   renderBullseyePlot("graph-4", "db", "dL", "← ∆b →", "← ∆L →", "∆b vs ∆L", highlightId);
   renderGraph5(highlightId);
+  renderGraph6();
 }
 
 function renderGraphById(id, highlightId) {
@@ -2961,6 +2963,7 @@ function renderGraphById(id, highlightId) {
   else if (id === "graph-3") renderBullseyePlot("graph-3", "da", "dL", "← ∆a →", "← ∆L →", "∆a vs ∆L", highlightId);
   else if (id === "graph-4") renderBullseyePlot("graph-4", "db", "dL", "← ∆b →", "← ∆L →", "∆b vs ∆L", highlightId);
   else if (id === "graph-5") renderGraph5(highlightId);
+  else if (id === "graph-6") renderGraph6();
 }
 
 // Set the graphGrid height so an expanded cell fills exactly the current viewport.
@@ -3758,6 +3761,304 @@ function renderGraph5(highlightId = null) {
       x="${(-cy).toFixed(1)}" y="10"
       text-anchor="middle" fill="#64748b" font-size="10">← b* →</text>
   </svg>`;
+}
+
+// -----------------------------------------------------------------------------
+// GRAPH 6 — Ink ramps: L* (black) and C* (color channels) vs ink %
+// -----------------------------------------------------------------------------
+
+function renderGraph6() {
+  const cell = document.getElementById("graph-6");
+  if (!cell) return;
+  const inner = graphCellContent("graph-6");
+  if (!inner) return;
+
+  const ds    = graphDatasetMode["graph-6"];
+  const refPs = (ds === "ref"    || ds === "both") ? refPatches    : null;
+  const smpPs = (ds === "sample" || ds === "both") ? samplePatches : null;
+
+  const layout         = refLayoutMeta || sampleLayoutMeta;
+  const indexFields    = (layout && layout.indexFields)    || [];
+  const indexFieldMeta = (layout && layout.indexFieldMeta) || {};
+
+  if (!(refPs || smpPs) || !indexFields.length) {
+    inner.innerHTML = `<div class="text-slate-500 text-xs italic p-2">${
+      !(refPs || smpPs)
+        ? "Load at least one CGATS file with ink channel data."
+        : "No ink channel index data found."
+    }</div>`;
+    const old = cell.querySelector(".graph6-channel-toggles");
+    if (old) old.remove();
+    return;
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  function isKField(f) {
+    const meta = indexFieldMeta[f];
+    if (meta && meta.inkName) {
+      const n = meta.inkName.toLowerCase();
+      if (n === "black" || n.startsWith("black")) return true;
+    }
+    return f === "CMYK_K" || shortChannelName(f, indexFieldMeta) === "K";
+  }
+
+  function findSubstrate(patches) {
+    if (!patches) return null;
+    return Object.values(patches).find(p =>
+      p.indexValues &&
+      Object.values(p.indexValues).every(v => typeof v === "number" && v < 0.5)
+    ) || null;
+  }
+
+  function channelColor(field) {
+    if (isKField(field)) return "#d4d4d8"; // light gray for black channel — dark Lab would be invisible
+    for (const ps of [refPatches, samplePatches]) {
+      if (!ps) continue;
+      let best = null, bestVal = -1;
+      Object.values(ps).forEach(p => {
+        if (!isPureInkChannel(p) || !p.indexValues) return;
+        const v = p.indexValues[field];
+        if (typeof v !== "number" || v <= 0) return;
+        if (v > bestVal) { bestVal = v; best = p; }
+      });
+      if (best) return rgbToCSS(labToSRGB(best.L, best.a, best.b));
+    }
+    return "#888888";
+  }
+
+  // ── Collect ramp points per channel ───────────────────────────────────────
+
+  const channels = {};
+  indexFields.forEach(field => {
+    const isBlack = isKField(field);
+    const abbr    = shortChannelName(field, indexFieldMeta);
+    const color   = channelColor(field);
+
+    function rampFor(patches) {
+      if (!patches) return [];
+      const pts = [];
+      const sub = findSubstrate(patches);
+      if (sub) {
+        const y = isBlack ? sub.L : Math.sqrt(sub.a * sub.a + sub.b * sub.b);
+        pts.push({ x: 0, y });
+      }
+      Object.values(patches).forEach(p => {
+        if (!isPureInkChannel(p) || !p.indexValues) return;
+        const v = p.indexValues[field];
+        if (typeof v !== "number" || v <= 0) return;
+        const y = isBlack ? p.L : Math.sqrt(p.a * p.a + p.b * p.b);
+        pts.push({ x: v, y });
+      });
+      pts.sort((a, b) => a.x - b.x);
+      return pts;
+    }
+
+    const refPts = rampFor(refPs);
+    const smpPts = rampFor(smpPs);
+    if (refPts.length || smpPts.length) {
+      channels[field] = { abbr, isBlack, color, refPts, smpPts };
+    }
+  });
+
+  // Init toggles for channels not yet seen
+  Object.keys(channels).forEach(f => {
+    if (!(f in graph6ChannelToggles)) graph6ChannelToggles[f] = true;
+  });
+
+  // ── Auto-scale Y ──────────────────────────────────────────────────────────
+
+  const allY = [];
+  Object.entries(channels).forEach(([f, d]) => {
+    if (!graph6ChannelToggles[f]) return;
+    [...d.refPts, ...d.smpPts].forEach(pt => allY.push(pt.y));
+  });
+
+  const rawMin = allY.length ? Math.min(...allY) : 0;
+  const rawMax = allY.length ? Math.max(...allY) : 100;
+  const pad    = (rawMax - rawMin) * 0.05 || 2;
+  const yMin   = Math.floor(rawMin - pad);
+  const yMax   = Math.ceil(rawMax  + pad);
+  const yRange = yMax - yMin || 1;
+
+  // ── SVG layout ────────────────────────────────────────────────────────────
+
+  const vW = 500, vH = 270;
+  const ml = 38, mr = 12, mt = 24, mb = 32;
+  const iW = vW - ml - mr;
+  const iH = vH - mt - mb;
+
+  const px = x => (ml + (x / 100) * iW).toFixed(1);
+  const py = y => (mt + iH - ((y - yMin) / yRange) * iH).toFixed(1);
+
+  // Grid lines
+  const xTicks = [0, 20, 40, 60, 80, 100];
+  let grid = "";
+  xTicks.forEach(x => {
+    grid += `<line x1="${px(x)}" y1="${mt}" x2="${px(x)}" y2="${mt + iH}"
+      stroke="#1e293b" stroke-width="0.8"/>`;
+  });
+
+  // Y ticks
+  const tickCount = 5;
+  const rawStep   = yRange / tickCount;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const niceStep  = Math.ceil(rawStep / magnitude) * magnitude || 1;
+  let yGrids = "", yLabels = "";
+  const yTickStart = Math.ceil(yMin / niceStep) * niceStep;
+  for (let y = yTickStart; y <= yMax; y += niceStep) {
+    yGrids  += `<line x1="${ml}" y1="${py(y)}" x2="${ml + iW}" y2="${py(y)}"
+      stroke="#1e293b" stroke-width="0.8"/>`;
+    yLabels += `<text x="${ml - 4}" y="${py(y)}" text-anchor="end"
+      dominant-baseline="middle" fill="#64748b" font-size="9">${y.toFixed(0)}</text>`;
+  }
+
+  // X tick labels
+  let xLabels = "";
+  xTicks.forEach(x => {
+    xLabels += `<text x="${px(x)}" y="${mt + iH + 11}" text-anchor="middle"
+      fill="#64748b" font-size="9">${x}%</text>`;
+  });
+
+  // ── Build polylines and dots ───────────────────────────────────────────────
+
+  let lines = "", dots = "";
+
+  Object.entries(channels).forEach(([f, d]) => {
+    if (!graph6ChannelToggles[f]) return;
+    const col = d.color;
+
+    function polyline(pts, dashed, opacity) {
+      if (pts.length < 2) return "";
+      // Group by x → mean y for the connecting line
+      const byX = {};
+      pts.forEach(pt => {
+        const k = pt.x.toFixed(2);
+        if (!byX[k]) byX[k] = { x: pt.x, ys: [] };
+        byX[k].ys.push(pt.y);
+      });
+      const coords = Object.values(byX)
+        .sort((a, b) => a.x - b.x)
+        .map(({ x, ys }) => {
+          const my = ys.reduce((s, v) => s + v, 0) / ys.length;
+          return `${px(x)},${py(my)}`;
+        });
+      return `<polyline points="${coords.join(" ")}" fill="none" stroke="${col}"
+        stroke-width="1.8" ${dashed ? 'stroke-dasharray="5 3"' : ""}
+        opacity="${opacity}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    }
+
+    function circles(pts, opacity) {
+      return pts.map(pt =>
+        `<circle cx="${px(pt.x)}" cy="${py(pt.y)}" r="2.5" fill="${col}"
+          opacity="${opacity}" stroke="rgba(0,0,0,0.35)" stroke-width="0.7"/>`
+      ).join("");
+    }
+
+    lines += polyline(d.refPts, false, "0.9");
+    lines += polyline(d.smpPts, true,  "0.5");
+    dots  += circles(d.refPts, "1");
+    dots  += circles(d.smpPts, "0.55");
+  });
+
+  // ── Title ─────────────────────────────────────────────────────────────────
+
+  const hasBlack = Object.values(channels).some(d => d.isBlack);
+  const hasColor = Object.values(channels).some(d => !d.isBlack);
+  const titleStr = hasBlack && hasColor ? "L* (K) / C* ramps"
+                 : hasBlack             ? "L* ramp (K)"
+                 :                        "C* ramps";
+
+  const clipId = "clip-g6";
+  const cx     = (ml + iW / 2).toFixed(1);
+
+  // ── Render SVG ────────────────────────────────────────────────────────────
+
+  inner.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 ${vW} ${vH}" style="width:100%;height:100%;display:block;">
+    <defs>
+      <clipPath id="${clipId}">
+        <rect x="${ml}" y="${mt}" width="${iW}" height="${iH}"/>
+      </clipPath>
+    </defs>
+
+    <text x="${cx}" y="16" text-anchor="middle"
+      fill="#cbd5e1" font-size="11" font-weight="600"
+      font-family="Quicksand,system-ui">${titleStr}</text>
+
+    ${grid}${yGrids}
+    <rect x="${ml}" y="${mt}" width="${iW}" height="${iH}"
+      fill="none" stroke="#334155" stroke-width="1"/>
+
+    <g clip-path="url(#${clipId})">${lines}${dots}</g>
+
+    ${xLabels}${yLabels}
+
+    <text x="${cx}" y="${vH - 2}" text-anchor="middle"
+      fill="#64748b" font-size="10">Ink %</text>
+    <text transform="rotate(-90)" x="${-(mt + iH / 2).toFixed(1)}" y="10"
+      text-anchor="middle" fill="#64748b" font-size="10">L* / C*</text>
+  </svg>`;
+
+  // ── Channel toggle buttons ─────────────────────────────────────────────────
+
+  const channelKeys = Object.keys(channels);
+  const keySignature = channelKeys.join(",");
+  let togglesWrap = cell.querySelector(".graph6-channel-toggles");
+
+  if (!togglesWrap || togglesWrap.dataset.sig !== keySignature) {
+    if (togglesWrap) togglesWrap.remove();
+
+    togglesWrap = document.createElement("div");
+    togglesWrap.className = "graph6-channel-toggles";
+    togglesWrap.dataset.sig = keySignature;
+    togglesWrap.style.cssText =
+      "position:absolute;bottom:4px;left:40px;display:flex;flex-wrap:wrap;gap:3px;z-index:3;";
+
+    channelKeys.forEach(f => {
+      const d   = channels[f];
+      const btn = document.createElement("button");
+      btn.type        = "button";
+      btn.title       = f;
+      btn.dataset.field = f;
+      btn.textContent = d.abbr;
+
+      function refresh() {
+        const on = graph6ChannelToggles[f];
+        btn.style.cssText = `
+          padding:1px 7px; font-size:10px; font-weight:700;
+          border-radius:9999px; cursor:pointer;
+          border:1.5px solid ${d.color};
+          background:${on ? d.color : "transparent"};
+          color:${on ? "#000" : d.color};
+          opacity:${on ? "1" : "0.5"};
+          font-family:Quicksand,system-ui;
+        `;
+      }
+      refresh();
+
+      btn.addEventListener("click", () => {
+        graph6ChannelToggles[f] = !graph6ChannelToggles[f];
+        refresh();
+        renderGraph6();
+      });
+
+      togglesWrap.appendChild(btn);
+    });
+
+    cell.appendChild(togglesWrap);
+  } else {
+    // Update active state of existing buttons without rebuilding
+    channelKeys.forEach(f => {
+      const btn = togglesWrap.querySelector(`[data-field="${f}"]`);
+      if (!btn) return;
+      const d  = channels[f];
+      const on = graph6ChannelToggles[f];
+      btn.style.background = on ? d.color : "transparent";
+      btn.style.color      = on ? "#000"  : d.color;
+      btn.style.opacity    = on ? "1"     : "0.5";
+    });
+  }
 }
 
 // -----------------------------------------------------------------------------
