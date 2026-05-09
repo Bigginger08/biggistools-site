@@ -2218,6 +2218,7 @@ const SPEC_TABLE_END_NM   = 730;
 function detectSpectralColumns(fields) {
   const patterns = [
     /^SPEC_(\d+)$/i,
+    /^SPECTRAL_NM_(\d+)$/i,
     /^R(\d+)$/,
     /^NM_(\d+)$/i,
     /^(\d+)nm$/i,
