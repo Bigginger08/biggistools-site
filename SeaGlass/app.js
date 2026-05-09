@@ -2221,6 +2221,7 @@ function detectSpectralColumns(fields) {
     /^R(\d+)$/,
     /^NM_(\d+)$/i,
     /^(\d+)nm$/i,
+    /^nm(\d+)$/i,
   ];
 
   const colMap = new Map();
@@ -2410,7 +2411,7 @@ function parseCgats(text) {
   const upperFields = formatFields.map((f) => f.toUpperCase());
 
   const idIndex =
-    indexOfAny(upperFields, ["SAMPLE_ID", "PATCH", "PATCH_ID"]) ?? -1;
+    indexOfAny(upperFields, ["SAMPLE_ID", "SAMPLEID", "PATCH", "PATCH_ID"]) ?? -1;
 
   const LIndex = indexOfAny(upperFields, ["LAB_L", "L*", "L"]) ?? -1;
   const aIndex = indexOfAny(upperFields, ["LAB_A", "A*", "A"]) ?? -1;
