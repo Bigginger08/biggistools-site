@@ -32,6 +32,8 @@ let selectedIndexField = null;   // e.g. "CMYK_C", "7CLR_1"
 let selectedPatchElement = null;
 let searchMatchedIds = new Set();
 let graph6ChannelToggles = {}; // fieldName → boolean (true = visible)
+let graph7ChannelToggles = {}; // fieldName → boolean (true = visible)
+let graph7DensityType    = "dT"; // "dT" | "dE" | "nb"
 
 // Index-channel metadata (from LGOMCCHANNELxx header lines)
 const indexFieldLabMap = {};     // key: channel name (e.g. "7CLR_1") → { L, a, b }
@@ -1210,6 +1212,14 @@ function shortChannelName(fieldName, indexFieldMeta) {
   // nCLR_k → k
   const clrMatch = fieldName.match(/^\d+CLR_(\d+)$/i);
   if (clrMatch) return clrMatch[1];
+  // Bare ink color names (e.g. ORANGE, GREEN, BLUE from Kodak Spotless files)
+  const bareNames = {
+    CYAN: "C", MAGENTA: "M", YELLOW: "Y", BLACK: "K",
+    ORANGE: "O", GREEN: "G", VIOLET: "V", BLUE: "B",
+    RED: "R", WHITE: "W", GRAY: "Gr", GREY: "Gr",
+  };
+  const bare = bareNames[fieldName.toUpperCase()];
+  if (bare) return bare;
   return fieldName.slice(0, 3);
 }
 
@@ -2311,6 +2321,7 @@ function detectSpectralColumns(fields) {
     /^NM_(\d+)$/i,
     /^(\d+)nm$/i,
     /^nm(\d+)$/i,
+    /^(\d+)_NM$/i,   // e.g. 380_NM (Kodak Spotless)
   ];
 
   const colMap = new Map();
@@ -2603,8 +2614,19 @@ function parseCgats(text) {
 
   const indexColumns = []; // { name, index, meta? }
 
+  // Pure-alpha names that are NOT ink channels (colorimetric diffs, color space abbreviations)
+  const KNOWN_NON_INK_ALPHA = new Set([
+    'DE','DL','DA','DB','DC','DH','LAB','XYZ','RGB','LCH','LUV','GEO',
+  ]);
+
+  // Track spectral column indices to exclude them from bare-name detection
+  const spectralIndices = spectralInfo
+    ? new Set([...spectralInfo.colMap.values()])
+    : new Set();
+
   upperFields.forEach((name, idx) => {
     if (idx === idIndex || idx === LIndex || idx === aIndex || idx === bIndex) return;
+    if (spectralIndices.has(idx)) return;
 
     const originalName = formatFields[idx]; // preserve original case
     let meta = null;
@@ -2628,6 +2650,13 @@ function parseCgats(text) {
         meta = channelMeta[channelNo];
       }
       indexColumns.push({ name: originalName, index: idx, meta });
+      return;
+    }
+
+    // Bare ink-name columns (e.g. ORANGE, GREEN, BLUE from Kodak Spotless files)
+    // Accept pure-alpha names of 2+ chars not matching known non-ink column types
+    if (/^[A-Z]{2,}$/i.test(originalName) && !KNOWN_NON_INK_ALPHA.has(originalName.toUpperCase())) {
+      indexColumns.push({ name: originalName, index: idx, meta: null });
     }
   });
 
@@ -3133,6 +3162,7 @@ function renderAllGraphs(highlightId) {
   renderBullseyePlot("graph-4", "db", "dL", "← ∆b →", "← ∆L →", "∆b vs ∆L", highlightId);
   renderGraph5(highlightId);
   renderGraph6();
+  renderGraph7();
 }
 
 function renderGraphById(id, highlightId) {
@@ -3143,6 +3173,7 @@ function renderGraphById(id, highlightId) {
   else if (id === "graph-4") renderBullseyePlot("graph-4", "db", "dL", "← ∆b →", "← ∆L →", "∆b vs ∆L", highlightId);
   else if (id === "graph-5") renderGraph5(highlightId);
   else if (id === "graph-6") renderGraph6();
+  else if (id === "graph-7") renderGraph7();
 }
 
 // Set the graphGrid height so an expanded cell fills exactly the current viewport.
@@ -4236,6 +4267,415 @@ function renderGraph6() {
       btn.style.background = on ? d.color : "transparent";
       btn.style.color      = on ? "#000"  : d.color;
       btn.style.opacity    = on ? "1"     : "0.5";
+    });
+  }
+}
+
+// -----------------------------------------------------------------------------
+// GRAPH 7 — TVI (Tone Value Increase)
+// Murray-Davis for C/M/Y/K (requires spectral + substrate patch)
+// SCTV (ISO 20654) for all other ink channels (uses Lab ΔE2000 from spectral
+// or from Lab columns when present)
+// -----------------------------------------------------------------------------
+
+// Compute CIELab from a pre-computed 36-element spectral reflectance array
+// under D50/2°, matching the logic in spectralToLab().
+function spectralArrToLab(arr) {
+  if (!arr) return null;
+  const scale = arr.some(v => !Number.isNaN(v) && v > 1.5) ? 0.01 : 1.0;
+  let sX = 0, sY = 0, sZ = 0, sXn = 0, sYn = 0, sZn = 0, sK = 0;
+  for (let i = 0; i < arr.length; i++) {
+    const R = arr[i];
+    if (Number.isNaN(R)) continue;
+    const spd = D50_SPD[i];
+    const xb = CMF_X[i], yb = CMF_Y[i], zb = CMF_Z[i];
+    const s = R * scale * spd;
+    sX += s * xb; sY += s * yb; sZ += s * zb;
+    sXn += spd * xb; sYn += spd * yb; sZn += spd * zb;
+    sK  += spd * yb;
+  }
+  if (sK === 0) return null;
+  const K = 100 / sK;
+  const X = K * sX, Y = K * sY, Z = K * sZ;
+  const Xn = K * sXn, Yn = K * sYn, Zn = K * sZn;
+  const f = t => t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 0.138;
+  return {
+    L: 116 * f(Y / Yn) - 16,
+    a: 500 * (f(X / Xn) - f(Y / Yn)),
+    b: 200 * (f(Y / Yn) - f(Z / Zn)),
+  };
+}
+
+function renderGraph7() {
+  const cell  = document.getElementById("graph-7");
+  const inner = graphCellContent("graph-7");
+  if (!cell || !inner) return;
+
+  const ds    = graphDatasetMode["graph-7"];
+  const refPs = (ds === "ref"    || ds === "both") ? refPatches    : null;
+  const smpPs = (ds === "sample" || ds === "both") ? samplePatches : null;
+
+  const layout         = refLayoutMeta || sampleLayoutMeta;
+  const indexFields    = (layout && layout.indexFields)    || [];
+  const indexFieldMeta = (layout && layout.indexFieldMeta) || {};
+
+  function clearControls() {
+    const ot = cell.querySelector(".graph7-channel-toggles");
+    if (ot) ot.remove();
+    const od = cell.querySelector(".graph7-dens-selector");
+    if (od) od.remove();
+  }
+
+  if (!(refPs || smpPs) || !indexFields.length) {
+    inner.innerHTML = `<div class="text-slate-500 text-xs italic p-2">Load at least one CGATS file with ink channel data to see TVI.</div>`;
+    clearControls();
+    return;
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  function isCMYK(abbr) {
+    return ["C", "M", "Y", "K"].includes(abbr);
+  }
+
+  // Channel-specific density filter (avoids spurious cross-channel contributions)
+  function getFilter(abbr) {
+    const map = {
+      dT: { C: STATUS_T_C, M: STATUS_T_M, Y: STATUS_T_Y, K: STATUS_T_Y },
+      dE: { C: STATUS_E_C, M: STATUS_E_M, Y: STATUS_E_Y, K: STATUS_E_Y },
+      nb: { C: NB_C,       M: NB_M,       Y: NB_Y,       K: NB_Y      },
+    };
+    return (map[graph7DensityType] || map.dT)[abbr] || null;
+  }
+
+  function allFilters() {
+    if (graph7DensityType === "dE") return [STATUS_E_Y, STATUS_E_M, STATUS_E_C];
+    if (graph7DensityType === "nb") return [NB_Y, NB_M, NB_C];
+    return [STATUS_T_Y, STATUS_T_M, STATUS_T_C];
+  }
+
+  function patchDensRel(p, paperSpectral, abbr) {
+    if (!p.spectral || !paperSpectral) return null;
+    const filter = getFilter(abbr);
+    if (filter) return computeDensityRel(p.spectral, paperSpectral, filter);
+    const vals = allFilters().map(f => computeDensityRel(p.spectral, paperSpectral, f)).filter(v => v != null);
+    return vals.length ? Math.max(...vals) : null;
+  }
+
+  function channelColor(field) {
+    const abbr = shortChannelName(field, indexFieldMeta);
+    if (abbr === "K") return "#d4d4d8";
+    for (const ps of [refPatches, samplePatches]) {
+      if (!ps) continue;
+      let best = null, bestVal = -1;
+      Object.values(ps).forEach(p => {
+        if (!isPureInkChannel(p) || !p.indexValues) return;
+        const v = p.indexValues[field];
+        if (typeof v !== "number" || v <= 0) return;
+        if (v > bestVal) { bestVal = v; best = p; }
+      });
+      if (best) return rgbToCSS(labToSRGB(best.L, best.a, best.b));
+    }
+    return "#888888";
+  }
+
+  // ── Build TVI ramp points per channel ─────────────────────────────────────
+
+  const channels = {};
+
+  indexFields.forEach(field => {
+    const abbr  = shortChannelName(field, indexFieldMeta);
+    const useMD = isCMYK(abbr);
+    const color = channelColor(field);
+
+    function rampFor(patches) {
+      if (!patches) return { line: [], dots: [] };
+      const substrate = findSubstratePatch(patches);
+      if (!substrate) return { line: [], dots: [] };
+
+      const rawPts = [];
+      Object.values(patches).forEach(p => {
+        if (!isPureInkChannel(p) || !p.indexValues) return;
+        const nominal = p.indexValues[field];
+        if (typeof nominal !== "number" || nominal < 0.1) return;
+
+        if (useMD) {
+          const d = patchDensRel(p, substrate.spectral, abbr);
+          if (d == null) return;
+          rawPts.push({ nominal, d });
+        } else {
+          const paperLab = substrate.L != null
+            ? { L: substrate.L, a: substrate.a, b: substrate.b }
+            : spectralArrToLab(substrate.spectral);
+          if (!paperLab) return;
+          const patchLab = p.L != null
+            ? { L: p.L, a: p.a, b: p.b }
+            : spectralArrToLab(p.spectral);
+          if (!patchLab) return;
+          const de = deltaE2000(patchLab, paperLab);
+          rawPts.push({ nominal, de });
+        }
+      });
+
+      if (rawPts.length === 0) return { line: [], dots: [] };
+
+      const solidVal = useMD
+        ? Math.max(...rawPts.map(p => p.d))
+        : Math.max(...rawPts.map(p => p.de));
+      if (solidVal <= 0) return { line: [], dots: [] };
+
+      const dots = rawPts.map(({ nominal, d, de }) => {
+        const tvActual = useMD
+          ? (1 - Math.pow(10, -d))        / (1 - Math.pow(10, -solidVal)) * 100
+          : (de / solidVal) * 100;
+        return { x: nominal, y: tvActual - nominal };
+      });
+
+      // Polyline includes paper anchor at (0, 0) by convention
+      const line = [{ x: 0, y: 0 }, ...dots].sort((a, b) => a.x - b.x);
+      dots.sort((a, b) => a.x - b.x);
+      return { line, dots };
+    }
+
+    const refRamp = rampFor(refPs);
+    const smpRamp = rampFor(smpPs);
+    if (refRamp.dots.length || smpRamp.dots.length) {
+      channels[field] = { abbr, useMD, color, refRamp, smpRamp };
+    }
+  });
+
+  Object.keys(channels).forEach(f => {
+    if (!(f in graph7ChannelToggles)) graph7ChannelToggles[f] = true;
+  });
+
+  if (Object.keys(channels).length === 0) {
+    inner.innerHTML = `<div class="text-slate-500 text-xs italic p-2">TVI requires a substrate patch (all channels ≤ 0.5%). C/M/Y/K channels also need spectral data.</div>`;
+    clearControls();
+    return;
+  }
+
+  // ── Auto-scale Y ──────────────────────────────────────────────────────────
+
+  const allY = [];
+  Object.entries(channels).forEach(([f, d]) => {
+    if (!graph7ChannelToggles[f]) return;
+    [...d.refRamp.dots, ...d.smpRamp.dots].forEach(pt => allY.push(pt.y));
+  });
+
+  const rawMin = allY.length ? Math.min(...allY) : -5;
+  const rawMax = allY.length ? Math.max(...allY) : 25;
+  const pad    = Math.max((rawMax - rawMin) * 0.10, 2);
+  const yMinF  = Math.min(Math.floor(rawMin - pad), -2);
+  const yMaxF  = Math.max(Math.ceil(rawMax  + pad),  2);
+  const yRange = yMaxF - yMinF || 1;
+
+  // ── SVG layout ─────────────────────────────────────────────────────────────
+
+  const vW = 500, vH = 270;
+  const ml = 40, mr = 12, mt = 24, mb = 32;
+  const iW = vW - ml - mr;
+  const iH = vH - mt - mb;
+
+  const px = x  => (ml + (x / 100) * iW).toFixed(1);
+  const py = y  => (mt + iH - ((y - yMinF) / yRange) * iH).toFixed(1);
+
+  // X grid + labels
+  const xTicks = [0, 20, 40, 60, 80, 100];
+  let grid = "";
+  xTicks.forEach(x => {
+    grid += `<line x1="${px(x)}" y1="${mt}" x2="${px(x)}" y2="${mt + iH}" stroke="#1e293b" stroke-width="0.8"/>`;
+  });
+
+  // Y grid + labels
+  const rawStep   = yRange / 5;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(Math.abs(rawStep) || 1)));
+  const niceStep  = Math.ceil(rawStep / magnitude) * magnitude || 1;
+  let yGrids = "", yLabels = "";
+  const yTickStart = Math.ceil(yMinF / niceStep) * niceStep;
+  for (let yy = yTickStart; yy <= yMaxF + 0.001; yy += niceStep) {
+    const yr = parseFloat(yy.toFixed(6));
+    const isZero = Math.abs(yr) < 0.001;
+    yGrids  += `<line x1="${ml}" y1="${py(yr)}" x2="${ml + iW}" y2="${py(yr)}"
+      stroke="${isZero ? "#475569" : "#1e293b"}" stroke-width="${isZero ? "1.2" : "0.8"}"/>`;
+    yLabels += `<text x="${ml - 4}" y="${py(yr)}" text-anchor="end"
+      dominant-baseline="middle" fill="${isZero ? "#94a3b8" : "#64748b"}" font-size="9">${yr.toFixed(0)}</text>`;
+  }
+
+  // Zero reference line (dashed)
+  const zeroY    = py(0);
+  const zeroLine = `<line x1="${ml}" y1="${zeroY}" x2="${ml + iW}" y2="${zeroY}"
+    stroke="#334155" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+
+  // X tick labels
+  let xLabels = "";
+  xTicks.forEach(x => {
+    xLabels += `<text x="${px(x)}" y="${mt + iH + 11}" text-anchor="middle" fill="#64748b" font-size="9">${x}%</text>`;
+  });
+
+  // ── Polylines + dots ───────────────────────────────────────────────────────
+
+  let lines = "", dots = "";
+
+  Object.entries(channels).forEach(([f, d]) => {
+    if (!graph7ChannelToggles[f]) return;
+    const col = d.color;
+
+    function polyline(pts, dashed, opacity) {
+      if (pts.length < 2) return "";
+      const coords = pts.map(pt => `${px(pt.x)},${py(pt.y)}`);
+      return `<polyline points="${coords.join(" ")}" fill="none" stroke="${col}"
+        stroke-width="1.8" ${dashed ? 'stroke-dasharray="5 3"' : ""}
+        opacity="${opacity}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    }
+
+    function circles(pts, opacity) {
+      return pts.map(pt =>
+        `<circle cx="${px(pt.x)}" cy="${py(pt.y)}" r="2.5" fill="${col}"
+          opacity="${opacity}" stroke="rgba(0,0,0,0.35)" stroke-width="0.7"/>`
+      ).join("");
+    }
+
+    lines += polyline(d.refRamp.line, false, "0.9");
+    lines += polyline(d.smpRamp.line, true,  "0.5");
+    dots  += circles(d.refRamp.dots,         "1");
+    dots  += circles(d.smpRamp.dots,         "0.55");
+  });
+
+  // ── SVG ────────────────────────────────────────────────────────────────────
+
+  const densLabel = { dT: "D(T)", dE: "D(E)", nb: "D(NB)" }[graph7DensityType] || "D(T)";
+  const clipId    = "clip-g7";
+  const cx        = (ml + iW / 2).toFixed(1);
+
+  inner.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 ${vW} ${vH}" style="width:100%;height:100%;display:block;">
+    <defs>
+      <clipPath id="${clipId}">
+        <rect x="${ml}" y="${mt}" width="${iW}" height="${iH}"/>
+      </clipPath>
+    </defs>
+    <text x="${cx}" y="16" text-anchor="middle"
+      fill="#cbd5e1" font-size="11" font-weight="600"
+      font-family="Quicksand,system-ui">TVI — ${densLabel} (C/M/Y/K) · SCTV (others)</text>
+    ${grid}${yGrids}
+    <rect x="${ml}" y="${mt}" width="${iW}" height="${iH}"
+      fill="none" stroke="#334155" stroke-width="1"/>
+    <g clip-path="url(#${clipId})">${zeroLine}${lines}${dots}</g>
+    ${xLabels}${yLabels}
+    <text x="${cx}" y="${vH - 2}" text-anchor="middle"
+      fill="#64748b" font-size="10">Nominal TV %</text>
+    <text transform="rotate(-90)" x="${-(mt + iH / 2).toFixed(1)}" y="10"
+      text-anchor="middle" fill="#64748b" font-size="10">TVI %</text>
+  </svg>`;
+
+  // ── Channel toggle buttons (below graph) ──────────────────────────────────
+
+  const channelKeys = Object.keys(channels);
+  const chanSig     = channelKeys.join(",");
+  let togglesWrap   = cell.querySelector(".graph7-channel-toggles");
+
+  if (!togglesWrap || togglesWrap.dataset.sig !== chanSig) {
+    if (togglesWrap) togglesWrap.remove();
+    togglesWrap = document.createElement("div");
+    togglesWrap.className     = "graph7-channel-toggles";
+    togglesWrap.dataset.sig   = chanSig;
+    togglesWrap.style.cssText =
+      "position:absolute;bottom:4px;left:40px;display:flex;flex-wrap:wrap;gap:3px;z-index:3;";
+
+    channelKeys.forEach(f => {
+      const d   = channels[f];
+      const btn = document.createElement("button");
+      btn.type          = "button";
+      btn.title         = f;
+      btn.dataset.field = f;
+      btn.textContent   = d.abbr;
+
+      function refreshBtn() {
+        const on = graph7ChannelToggles[f];
+        btn.style.cssText = `
+          padding:1px 7px; font-size:10px; font-weight:700;
+          border-radius:9999px; cursor:pointer;
+          border:1.5px solid ${d.color};
+          background:${on ? d.color : "transparent"};
+          color:${on ? "#000" : d.color};
+          opacity:${on ? "1" : "0.5"};
+          font-family:Quicksand,system-ui;
+        `;
+      }
+      refreshBtn();
+
+      btn.addEventListener("click", () => {
+        graph7ChannelToggles[f] = !graph7ChannelToggles[f];
+        refreshBtn();
+        renderGraph7();
+      });
+
+      togglesWrap.appendChild(btn);
+    });
+
+    cell.appendChild(togglesWrap);
+  } else {
+    channelKeys.forEach(f => {
+      const btn = togglesWrap.querySelector(`[data-field="${f}"]`);
+      if (!btn) return;
+      const d  = channels[f];
+      const on = graph7ChannelToggles[f];
+      btn.style.background = on ? d.color : "transparent";
+      btn.style.color      = on ? "#000"  : d.color;
+      btn.style.opacity    = on ? "1"     : "0.5";
+    });
+  }
+
+  // ── Density type selector (right of graph) ─────────────────────────────────
+
+  let densSel = cell.querySelector(".graph7-dens-selector");
+  if (!densSel) {
+    densSel = document.createElement("div");
+    densSel.className     = "graph7-dens-selector";
+    densSel.style.cssText =
+      "position:absolute;top:32px;right:4px;display:flex;flex-direction:column;gap:3px;z-index:3;";
+
+    [{ id: "dT", label: "D(T)" }, { id: "dE", label: "D(E)" }, { id: "nb", label: "D(NB)" }]
+      .forEach(({ id, label }) => {
+        const btn       = document.createElement("button");
+        btn.type        = "button";
+        btn.dataset.dtype = id;
+        btn.textContent = label;
+
+        function refreshDens() {
+          const active = graph7DensityType === id;
+          btn.style.cssText = `
+            padding:2px 6px; font-size:10px; font-weight:700;
+            border-radius:4px; cursor:pointer;
+            border:1.5px solid #475569;
+            background:${active ? "#475569" : "transparent"};
+            color:${active ? "#f1f5f9" : "#94a3b8"};
+            font-family:Quicksand,system-ui;
+            white-space:nowrap;
+          `;
+        }
+        refreshDens();
+
+        btn.addEventListener("click", () => {
+          graph7DensityType = id;
+          // Update sibling button styles
+          densSel.querySelectorAll("button").forEach(b => {
+            const a = b.dataset.dtype === graph7DensityType;
+            b.style.background = a ? "#475569" : "transparent";
+            b.style.color      = a ? "#f1f5f9"  : "#94a3b8";
+          });
+          renderGraph7();
+        });
+
+        densSel.appendChild(btn);
+      });
+
+    cell.appendChild(densSel);
+  } else {
+    densSel.querySelectorAll("button").forEach(btn => {
+      const active = btn.dataset.dtype === graph7DensityType;
+      btn.style.background = active ? "#475569" : "transparent";
+      btn.style.color      = active ? "#f1f5f9"  : "#94a3b8";
     });
   }
 }
