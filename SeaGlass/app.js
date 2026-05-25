@@ -1695,26 +1695,39 @@ function handlePatchClick(id) {
   let densityHtml = "";
   const isPure = isPureInkChannel(ref) || (sample && isPureInkChannel(sample));
   if (isPure) {
-    const refDens  = ref.spectral    ? computeInkDensities(ref.spectral)    : null;
-    const sampDens = sample && sample.spectral ? computeInkDensities(sample.spectral) : null;
+    const refPaper  = findSubstratePatch(refPatches);
+    const smpPaper  = sample ? findSubstratePatch(samplePatches) : null;
+    const refDens   = ref.spectral
+      ? computeInkDensities(ref.spectral, refPaper && refPaper.spectral)
+      : null;
+    const sampDens  = sample && sample.spectral
+      ? computeInkDensities(sample.spectral, smpPaper && smpPaper.spectral)
+      : null;
+
     if (refDens || sampDens) {
-      const fd = (v) => v == null ? "–" : v.toFixed(2);
+      const fd = v => v == null ? "–" : v.toFixed(2);
+      const hasSamp = !!sampDens;
+      const cols = hasSamp ? "grid-cols-5" : "grid-cols-3";
       densityHtml = `
         <div class="mt-1 border-t border-slate-700 pt-1">
           <div class="font-semibold text-slate-200 mb-1">Density</div>
-          <div class="grid grid-cols-3 gap-x-3 text-slate-300">
+          <div class="grid ${cols} gap-x-3 text-slate-300 text-[10px]">
             <div class="text-slate-400"></div>
-            <div class="text-slate-400">Ref</div>
-            <div class="text-slate-400">Sample</div>
-            <div>D(s)</div>
-            <div>${fd(refDens && refDens.ds)}</div>
-            <div>${fd(sampDens && sampDens.ds)}</div>
+            <div class="text-slate-400">Abs</div>
+            <div class="text-slate-400">Rel</div>
+            ${hasSamp ? '<div class="text-slate-400">Smp Abs</div><div class="text-slate-400">Smp Rel</div>' : ''}
+            <div>D(NB)</div>
+            <div>${fd(refDens && refDens.nb_abs)}</div>
+            <div>${fd(refDens && refDens.nb_rel)}</div>
+            ${hasSamp ? `<div>${fd(sampDens && sampDens.nb_abs)}</div><div>${fd(sampDens && sampDens.nb_rel)}</div>` : ''}
             <div>D(T)</div>
-            <div>${fd(refDens && refDens.dT)}</div>
-            <div>${fd(sampDens && sampDens.dT)}</div>
+            <div>${fd(refDens && refDens.dT_abs)}</div>
+            <div>${fd(refDens && refDens.dT_rel)}</div>
+            ${hasSamp ? `<div>${fd(sampDens && sampDens.dT_abs)}</div><div>${fd(sampDens && sampDens.dT_rel)}</div>` : ''}
             <div>D(E)</div>
-            <div>${fd(refDens && refDens.dE)}</div>
-            <div>${fd(sampDens && sampDens.dE)}</div>
+            <div>${fd(refDens && refDens.dE_abs)}</div>
+            <div>${fd(refDens && refDens.dE_rel)}</div>
+            ${hasSamp ? `<div>${fd(sampDens && sampDens.dE_abs)}</div><div>${fd(sampDens && sampDens.dE_rel)}</div>` : ''}
           </div>
         </div>
       `;
@@ -2245,37 +2258,48 @@ const D50_SPD = [
 const SPEC_TABLE_START_NM = 380;
 const SPEC_TABLE_END_NM   = 730;
 
-// ISO 5-3 Status T spectral filter responses (36 values, 380–730 nm, 10 nm steps)
-// Blue peaks ~420 nm, Green ~540 nm, Red ~640 nm; Visual uses CMF_Y (photopic)
-const STATUS_T_B = [
-  0.000, 0.002, 0.035, 0.280, 1.000, 0.840, 0.440, 0.210, 0.080, 0.010,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+// Densitometer spectral responsivity functions from VBA Rem2Dichte.
+// Each is the combined tungsten-illuminant × filter × detector response.
+// D50 is NOT used here — it belongs only in colorimetric (Lab) calculations.
+// Channel suffix naming: Y = yellow-ink channel (blue filter), M = magenta (green), C = cyan (red).
+// 36 values, index 0 = 380 nm … index 35 = 730 nm (10 nm steps).
+const STATUS_T_Y = [
+  0.000385, 0.0021,   0.008324, 0.024541, 0.055306, 0.085311, 0.114495, 0.132636,
+  0.140412, 0.136502, 0.119338, 0.091448, 0.056029, 0.025687, 0.007409, 5.5e-5,
+  1e-6,     1.3e-5,   3e-6,     1e-6,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
-const STATUS_T_G = [
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0.060, 0.430, 0.780, 0.990, 1.000, 0.750, 0.360, 0.110, 0.010,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+const STATUS_T_M = [
+  0, 0, 0, 0, 0, 0, 0, 0, -1.3e-5, -9.6e-5,
+  0.001727, 0.00964, 0.054663, 0.128804, 0.175926, 0.189941, 0.167862, 0.125972,
+  0.080105, 0.042078, 0.017152, 0.004815, 0.001252, 0.000163, 9e-6, 1e-6,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
-const STATUS_T_R = [
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0.020, 0.240, 0.580, 0.840, 0.950, 1.000, 0.970, 0.870, 0.700,
-  0.530, 0.370, 0.220, 0.100, 0.040, 0.010,
+const STATUS_T_C = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1e-6, 4e-6, 2.7e-5, -4.19e-4,
+  -3.728e-3, 0.114921, 0.30713, 0.272826, 0.173613, 0.080369, 0.031981, 0.015211,
+  0.004947, 0.001529, 0.000911, 0.000479, 0.00016, 3.1e-5, 5e-6, 1e-6,
 ];
-// ISO 5-3 Status E spectral filter responses — Blue peaks ~440 nm (narrower than T)
-const STATUS_E_B = [
-  0, 0, 0, 0.060, 0.360, 0.820, 1.000, 0.710, 0.300, 0.070,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+const STATUS_E_Y = [
+  0.000388, 0.005362, 0.024214, 0.058368, 0.111994, 0.157924, 0.187018, 0.174631,
+  0.143428, 0.088856, 0.035168, 0.011061, 0.001589, -1.3e-5, 8e-6, 4e-6, 1e-6,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
-const STATUS_E_G = [
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0.040, 0.360, 0.730, 0.970, 1.000, 0.780, 0.420, 0.150, 0.020,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+const STATUS_E_M = [
+  0, 0, 0, 0, 0, 0, 0, 0, -1.3e-5, -9.5e-5,
+  0.001724, 0.00964, 0.054663, 0.128802, 0.175928, 0.189941, 0.167862, 0.125972,
+  0.080105, 0.042078, 0.017152, 0.004815, 0.001252, 0.000163, 9e-6, 1e-6,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ];
-const STATUS_E_R = [
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0.010, 0.200, 0.520, 0.800, 0.930, 1.000, 0.980, 0.890, 0.720,
-  0.540, 0.380, 0.220, 0.090, 0.030, 0.010,
+const STATUS_E_C = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1e-6, 4e-6, 2.7e-5, -4.19e-4,
+  -3.728e-3, 0.114921, 0.30713, 0.272826, 0.173613, 0.080369, 0.031981, 0.015211,
+  0.004947, 0.001529, 0.000911, 0.000479, 0.00016, 3.1e-5, 5e-6, 1e-6,
 ];
+// Narrowband (NB) filter — single-wavelength spike per channel (from VBA NB case).
+// Y: 430 nm (index 5), M: 530 nm (index 15), C: 620 nm (index 24).
+const NB_Y = [0,0,0,0,0,1, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+const NB_M = [0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+const NB_C = [0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0];
 
 // Detect spectral reflectance columns in a CGATS DATA_FORMAT field list.
 // Returns { startNm, endNm, colMap: Map<nm → colIndex> } or null.
@@ -2389,9 +2413,8 @@ function extractSpectralReflectance(colMap, parts) {
   return values;
 }
 
-// Apply a status filter and return density = -log10(Σ filter·R / Σ filter).
-// filterArr: 36-element array aligned to SPEC_TABLE_START_NM.
-function computeDensity(spectralArr, filterArr) {
+// Absolute density = -log10(Σ F·R / Σ F).  filterArr aligned to SPEC_TABLE_START_NM.
+function computeDensityAbs(spectralArr, filterArr) {
   const scale = spectralArr.some(v => !Number.isNaN(v) && v > 1.5) ? 0.01 : 1.0;
   let num = 0, den = 0;
   for (let i = 0; i < spectralArr.length; i++) {
@@ -2406,40 +2429,61 @@ function computeDensity(spectralArr, filterArr) {
   return -Math.log10(num / den);
 }
 
-// Compute the three density values for a pure-ink spectral patch.
-// Returns { ds, dT, dE } — each the best-channel density for that status.
-function computeInkDensities(spectralArr) {
-  const scale = spectralArr.some(v => !Number.isNaN(v) && v > 1.5) ? 0.01 : 1.0;
-
-  // D(s): density at the wavelength of minimum reflectance (peak absorption)
-  let minR = Infinity;
-  for (const v of spectralArr) {
-    if (!Number.isNaN(v)) {
-      const R = v * scale;
-      if (R > 0 && R < minR) minR = R;
-    }
+// Paper-relative density = -log10(Σ F·R_patch / Σ F·R_paper).
+// Matches the VBA Rem2Dichte formula exactly.
+function computeDensityRel(spectralArr, paperArr, filterArr) {
+  if (!paperArr) return null;
+  const scaleC = spectralArr.some(v => !Number.isNaN(v) && v > 1.5) ? 0.01 : 1.0;
+  const scaleP = paperArr.some(v => !Number.isNaN(v) && v > 1.5) ? 0.01 : 1.0;
+  let num = 0, den = 0;
+  for (let i = 0; i < spectralArr.length; i++) {
+    const f = filterArr[i] || 0;
+    if (f === 0) continue;
+    const rc = spectralArr[i], rp = paperArr[i];
+    if (Number.isNaN(rc) || Number.isNaN(rp)) continue;
+    num += f * rc * scaleC;
+    den += f * rp * scaleP;
   }
-  const ds = minR < Infinity ? -Math.log10(minR) : null;
+  if (den === 0 || num <= 0) return null;
+  return -Math.log10(num / den);
+}
 
-  // D(T): max density across all Status T channels (V uses photopic CMF_Y)
-  const tCh = [
-    computeDensity(spectralArr, CMF_Y),
-    computeDensity(spectralArr, STATUS_T_B),
-    computeDensity(spectralArr, STATUS_T_G),
-    computeDensity(spectralArr, STATUS_T_R),
-  ].filter(v => v != null);
-  const dT = tCh.length > 0 ? Math.max(...tCh) : null;
+// Find the substrate/paper patch in a patch map (all ink channels ≤ 0.5%).
+function findSubstratePatch(patches) {
+  if (!patches) return null;
+  return Object.values(patches).find(p =>
+    p.indexValues &&
+    Object.values(p.indexValues).length > 0 &&
+    Object.values(p.indexValues).every(v => typeof v === "number" && v < 0.5)
+  ) || null;
+}
 
-  // D(E): max density across all Status E channels
-  const eCh = [
-    computeDensity(spectralArr, CMF_Y),
-    computeDensity(spectralArr, STATUS_E_B),
-    computeDensity(spectralArr, STATUS_E_G),
-    computeDensity(spectralArr, STATUS_E_R),
-  ].filter(v => v != null);
-  const dE = eCh.length > 0 ? Math.max(...eCh) : null;
+// Compute absolute and paper-relative density for Status T, Status E, and NB filter.
+// paperSpectral may be null — relative values will then be null.
+// Returns { nb_abs, nb_rel, dT_abs, dT_rel, dE_abs, dE_rel }.
+function computeInkDensities(spectralArr, paperSpectral) {
+  const NB_CHANNELS = [NB_Y,       NB_M,       NB_C      ];
+  const T_CHANNELS  = [STATUS_T_Y, STATUS_T_M, STATUS_T_C];
+  const E_CHANNELS  = [STATUS_E_Y, STATUS_E_M, STATUS_E_C];
 
-  return { ds, dT, dE };
+  const bestAbs = (channels) => {
+    const vals = channels.map(f => computeDensityAbs(spectralArr, f)).filter(v => v != null);
+    return vals.length ? Math.max(...vals) : null;
+  };
+  const bestRel = (channels) => {
+    if (!paperSpectral) return null;
+    const vals = channels.map(f => computeDensityRel(spectralArr, paperSpectral, f)).filter(v => v != null);
+    return vals.length ? Math.max(...vals) : null;
+  };
+
+  return {
+    nb_abs: bestAbs(NB_CHANNELS),
+    nb_rel: bestRel(NB_CHANNELS),
+    dT_abs: bestAbs(T_CHANNELS),
+    dT_rel: bestRel(T_CHANNELS),
+    dE_abs: bestAbs(E_CHANNELS),
+    dE_rel: bestRel(E_CHANNELS),
+  };
 }
 
 
