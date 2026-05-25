@@ -1691,6 +1691,36 @@ function handlePatchClick(id) {
     `;
   }
 
+  // --- Density (pure ink patches with spectral data only) --------------------
+  let densityHtml = "";
+  const isPure = isPureInkChannel(ref) || (sample && isPureInkChannel(sample));
+  if (isPure) {
+    const refDens  = ref.spectral    ? computeInkDensities(ref.spectral)    : null;
+    const sampDens = sample && sample.spectral ? computeInkDensities(sample.spectral) : null;
+    if (refDens || sampDens) {
+      const fd = (v) => v == null ? "–" : v.toFixed(2);
+      densityHtml = `
+        <div class="mt-1 border-t border-slate-700 pt-1">
+          <div class="font-semibold text-slate-200 mb-1">Density</div>
+          <div class="grid grid-cols-3 gap-x-3 text-slate-300">
+            <div class="text-slate-400"></div>
+            <div class="text-slate-400">Ref</div>
+            <div class="text-slate-400">Sample</div>
+            <div>D(s)</div>
+            <div>${fd(refDens && refDens.ds)}</div>
+            <div>${fd(sampDens && sampDens.ds)}</div>
+            <div>D(T)</div>
+            <div>${fd(refDens && refDens.dT)}</div>
+            <div>${fd(sampDens && sampDens.dT)}</div>
+            <div>D(E)</div>
+            <div>${fd(refDens && refDens.dE)}</div>
+            <div>${fd(sampDens && sampDens.dE)}</div>
+          </div>
+        </div>
+      `;
+    }
+  }
+
   const html = `
     <div class="font-semibold text-slate-100 mb-1 text-xs">
       Selected patch: ${id}
@@ -1748,6 +1778,8 @@ function handlePatchClick(id) {
             <div>ΔE00: ${fmt(dE, 2)}</div>
           </div>
         </div>
+
+        ${densityHtml}
 
         <div class="mt-1 border-t border-slate-700 pt-1">
           <div class="font-semibold text-slate-200 mb-1">Repeatability</div>
@@ -2213,6 +2245,38 @@ const D50_SPD = [
 const SPEC_TABLE_START_NM = 380;
 const SPEC_TABLE_END_NM   = 730;
 
+// ISO 5-3 Status T spectral filter responses (36 values, 380–730 nm, 10 nm steps)
+// Blue peaks ~420 nm, Green ~540 nm, Red ~640 nm; Visual uses CMF_Y (photopic)
+const STATUS_T_B = [
+  0.000, 0.002, 0.035, 0.280, 1.000, 0.840, 0.440, 0.210, 0.080, 0.010,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+];
+const STATUS_T_G = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0.060, 0.430, 0.780, 0.990, 1.000, 0.750, 0.360, 0.110, 0.010,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+];
+const STATUS_T_R = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0.020, 0.240, 0.580, 0.840, 0.950, 1.000, 0.970, 0.870, 0.700,
+  0.530, 0.370, 0.220, 0.100, 0.040, 0.010,
+];
+// ISO 5-3 Status E spectral filter responses — Blue peaks ~440 nm (narrower than T)
+const STATUS_E_B = [
+  0, 0, 0, 0.060, 0.360, 0.820, 1.000, 0.710, 0.300, 0.070,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+];
+const STATUS_E_G = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0.040, 0.360, 0.730, 0.970, 1.000, 0.780, 0.420, 0.150, 0.020,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+];
+const STATUS_E_R = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0.010, 0.200, 0.520, 0.800, 0.930, 1.000, 0.980, 0.890, 0.720,
+  0.540, 0.380, 0.220, 0.090, 0.030, 0.010,
+];
+
 // Detect spectral reflectance columns in a CGATS DATA_FORMAT field list.
 // Returns { startNm, endNm, colMap: Map<nm → colIndex> } or null.
 function detectSpectralColumns(fields) {
@@ -2310,6 +2374,72 @@ function spectralToLab(colMap, parts) {
     a: 500 * (f(X / Xn) - f(Y / Yn)),
     b: 200 * (f(Y / Yn) - f(Z / Zn)),
   };
+}
+
+// Extract spectral reflectance from a CGATS data row into a 36-element array
+// aligned to SPEC_TABLE_START_NM (380 nm) at 10 nm steps. Missing → NaN.
+function extractSpectralReflectance(colMap, parts) {
+  const n = (SPEC_TABLE_END_NM - SPEC_TABLE_START_NM) / 10 + 1;
+  const values = new Array(n).fill(NaN);
+  for (const [nm, colIdx] of colMap) {
+    if (nm < SPEC_TABLE_START_NM || nm > SPEC_TABLE_END_NM) continue;
+    const v = parseFloat(parts[colIdx]);
+    if (!Number.isNaN(v)) values[(nm - SPEC_TABLE_START_NM) / 10] = v;
+  }
+  return values;
+}
+
+// Apply a status filter and return density = -log10(Σ filter·R / Σ filter).
+// filterArr: 36-element array aligned to SPEC_TABLE_START_NM.
+function computeDensity(spectralArr, filterArr) {
+  const scale = spectralArr.some(v => !Number.isNaN(v) && v > 1.5) ? 0.01 : 1.0;
+  let num = 0, den = 0;
+  for (let i = 0; i < spectralArr.length; i++) {
+    const f = filterArr[i] || 0;
+    if (f === 0) continue;
+    const r = spectralArr[i];
+    if (Number.isNaN(r)) continue;
+    num += f * r * scale;
+    den += f;
+  }
+  if (den === 0 || num <= 0) return null;
+  return -Math.log10(num / den);
+}
+
+// Compute the three density values for a pure-ink spectral patch.
+// Returns { ds, dT, dE } — each the best-channel density for that status.
+function computeInkDensities(spectralArr) {
+  const scale = spectralArr.some(v => !Number.isNaN(v) && v > 1.5) ? 0.01 : 1.0;
+
+  // D(s): density at the wavelength of minimum reflectance (peak absorption)
+  let minR = Infinity;
+  for (const v of spectralArr) {
+    if (!Number.isNaN(v)) {
+      const R = v * scale;
+      if (R > 0 && R < minR) minR = R;
+    }
+  }
+  const ds = minR < Infinity ? -Math.log10(minR) : null;
+
+  // D(T): max density across all Status T channels (V uses photopic CMF_Y)
+  const tCh = [
+    computeDensity(spectralArr, CMF_Y),
+    computeDensity(spectralArr, STATUS_T_B),
+    computeDensity(spectralArr, STATUS_T_G),
+    computeDensity(spectralArr, STATUS_T_R),
+  ].filter(v => v != null);
+  const dT = tCh.length > 0 ? Math.max(...tCh) : null;
+
+  // D(E): max density across all Status E channels
+  const eCh = [
+    computeDensity(spectralArr, CMF_Y),
+    computeDensity(spectralArr, STATUS_E_B),
+    computeDensity(spectralArr, STATUS_E_G),
+    computeDensity(spectralArr, STATUS_E_R),
+  ].filter(v => v != null);
+  const dE = eCh.length > 0 ? Math.max(...eCh) : null;
+
+  return { ds, dT, dE };
 }
 
 
@@ -2419,7 +2549,7 @@ function parseCgats(text) {
   const bIndex = indexOfAny(upperFields, ["LAB_B", "B*", "B"]) ?? -1;
 
   const hasLab = LIndex >= 0 && aIndex >= 0 && bIndex >= 0;
-  const spectralInfo = hasLab ? null : detectSpectralColumns(formatFields);
+  const spectralInfo = detectSpectralColumns(formatFields);
 
   if (!hasLab && !spectralInfo) {
     throw new Error(
@@ -2510,7 +2640,9 @@ function parseCgats(text) {
       }
     });
 
-    rows.push({ id, L, a, b, indexValues });
+    const spectral = spectralInfo ? extractSpectralReflectance(spectralInfo.colMap, parts) : null;
+
+    rows.push({ id, L, a, b, indexValues, spectral });
     rowCounter++;
   }
 
@@ -2562,6 +2694,7 @@ function parseCgats(text) {
       globalRow: globalRow,
       sampleId: numericId,
       indexValues: r.indexValues,
+      spectral: r.spectral || null,
     };
   });
 
