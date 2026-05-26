@@ -2558,11 +2558,21 @@ function parseCgats(text) {
 
         channelMeta[idx] = { inkName, fullToneLab };
       }
+
+      // PROCESSCOLOR_ID "7 2 Magenta"  (used by some measurement software instead of LGOMCCHANNEL)
+      const pcIdMatch = content.match(/^PROCESSCOLOR_ID\s+"(\d+)\s+(\d+)\s+(.+?)"\s*$/i);
+      if (pcIdMatch) {
+        const channelNo = parseInt(pcIdMatch[2], 10);
+        const inkName   = pcIdMatch[3].trim();
+        if (!channelMeta[channelNo]) { // LGOMCCHANNEL takes priority if both present
+          channelMeta[channelNo] = { inkName, fullToneLab: null };
+        }
+      }
     }
 
 
 
-    
+
     if (/^BEGIN_DATA_FORMAT/i.test(rawLine)) {
       inFormat = true;
       continue;
@@ -2653,6 +2663,17 @@ function parseCgats(text) {
       return;
     }
 
+    // PCn_k (e.g. PC7_1 ... PC7_7)
+    const pcColMatch = originalName.match(/^PC\d+_(\d+)$/i);
+    if (pcColMatch) {
+      const channelNo = parseInt(pcColMatch[1], 10);
+      if (channelMeta[channelNo]) {
+        meta = channelMeta[channelNo];
+      }
+      indexColumns.push({ name: originalName, index: idx, meta });
+      return;
+    }
+
     // Bare ink-name columns (e.g. ORANGE, GREEN, BLUE from Kodak Spotless files)
     // Accept pure-alpha names of 2+ chars not matching known non-ink column types
     if (/^[A-Z]{2,}$/i.test(originalName) && !KNOWN_NON_INK_ALPHA.has(originalName.toUpperCase())) {
@@ -2664,13 +2685,15 @@ function parseCgats(text) {
   const indexFieldMeta = {}; // name → { inkName, fullToneLab }
 
   indexColumns.forEach((col) => {
-    if (col.meta && col.meta.fullToneLab) {
+    if (col.meta && (col.meta.fullToneLab || col.meta.inkName)) {
       const key = col.name.toUpperCase();
       indexFieldMeta[col.name] = {
         inkName: col.meta.inkName || null,
-        fullToneLab: col.meta.fullToneLab,
+        fullToneLab: col.meta.fullToneLab || null,
       };
-      indexFieldLabMap[key] = col.meta.fullToneLab;
+      if (col.meta.fullToneLab) {
+        indexFieldLabMap[key] = col.meta.fullToneLab;
+      }
       if (col.meta.inkName) {
         indexFieldInkNameMap[key] = col.meta.inkName;
       }
