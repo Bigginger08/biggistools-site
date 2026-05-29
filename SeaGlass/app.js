@@ -2015,7 +2015,7 @@ function applySearchHighlights() {
   document.querySelectorAll(".patch-search-match")
     .forEach(el => el.classList.remove("patch-search-match"));
   searchMatchedIds.forEach(id => {
-    const el = document.querySelector(`[data-patchId="${id}"]`);
+    const el = document.querySelector(`[data-patch-id="${id}"]`);
     if (el) el.classList.add("patch-search-match");
   });
 }
