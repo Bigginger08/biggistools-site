@@ -385,28 +385,35 @@ function setViewMode(mode) {
   updateView();
 }
 
-// Update button states based on whether sample is loaded
+// Update button states based on whether sample is loaded and file counts
 function updateModeButtonStates(hasSample) {
   if (!viewModeControls) return;
 
+  const hasMultiRef    = refFileNames.length > 1;
+  const hasMultiSample = hasSample && sampleFileNames.length > 1;
+
   const buttons = viewModeControls.querySelectorAll(".view-mode-btn");
-  const sampleRequiredModes = ["sampleColors", "deltaE", "deltaLab", "sampleRepeat"];
+
+  const disabledModes = {
+    sampleColors: !hasSample,
+    deltaE:       !hasSample,
+    deltaLab:     !hasSample,
+    sampleRepeat: !hasMultiSample,
+    refRepeat:    !hasMultiRef,
+  };
 
   buttons.forEach((btn) => {
     const mode = btn.dataset.mode;
+    if (!(mode in disabledModes)) return;
 
-    if (sampleRequiredModes.includes(mode)) {
-      if (!hasSample) {
-        // Disable and grey out
-        btn.disabled = true;
-        btn.classList.add("opacity-30", "cursor-not-allowed", "pointer-events-none");
-        btn.classList.remove("hover:bg-slate-700/80");
-      } else {
-        // Enable
-        btn.disabled = false;
-        btn.classList.remove("opacity-30", "cursor-not-allowed", "pointer-events-none");
-        btn.classList.add("hover:bg-slate-700/80");
-      }
+    if (disabledModes[mode]) {
+      btn.disabled = true;
+      btn.classList.add("opacity-30", "cursor-not-allowed", "pointer-events-none");
+      btn.classList.remove("hover:bg-slate-700/80");
+    } else {
+      btn.disabled = false;
+      btn.classList.remove("opacity-30", "cursor-not-allowed", "pointer-events-none");
+      btn.classList.add("hover:bg-slate-700/80");
     }
   });
 
@@ -3077,13 +3084,13 @@ function deltaEToHeatColor(dE, maxDelta) {
 
   if (hueT < 0.5) {
     const k = hueT / 0.5;
-    r = Math.round(255 * k);
-    g = 255;
+    r = Math.round(200 * k);
+    g = 200;
     b = 0;
   } else {
     const k = (hueT - 0.5) / 0.5;
-    r = 255;
-    g = Math.round(255 * (1 - k));
+    r = 200;
+    g = Math.round(200 * (1 - k));
     b = 0;
   }
 
