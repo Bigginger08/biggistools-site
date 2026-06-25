@@ -1731,10 +1731,16 @@ function handlePatchClick(id) {
       <!-- Col 2: Lab / ΔE table -->
       <div class="border-l border-slate-700 pl-3">
         <div class="font-semibold text-slate-300 mb-1 text-[11px]">Lab / Color</div>
-        <table class="w-full text-[10px] border-collapse">
+        <table class="w-full text-[10px] border-collapse table-fixed">
+          <colgroup>
+            <col style="width:22%">
+            <col style="width:27%">
+            <col style="width:27%">
+            <col style="width:24%">
+          </colgroup>
           <thead>
             <tr class="text-slate-500 border-b border-slate-700">
-              <th class="text-left pb-0.5 font-medium w-5"></th>
+              <th class="text-left pb-0.5 font-medium"></th>
               <th class="text-right pb-0.5 font-medium">Ref</th>
               <th class="text-right pb-0.5 font-medium">Sample</th>
               <th class="text-right pb-0.5 font-medium">Δ</th>
@@ -1781,12 +1787,19 @@ function handlePatchClick(id) {
 
         <div class="mt-2 border-t border-slate-700 pt-2">
           <div class="font-semibold text-slate-300 mb-1 text-[11px]">Repeatability</div>
-          <table class="w-full text-[10px] border-collapse">
+          <table class="w-full text-[10px] border-collapse table-fixed">
+            <colgroup>
+              <col style="width:22%">
+              <col style="width:27%">
+              <col style="width:27%">
+              <col style="width:24%">
+            </colgroup>
             <thead>
               <tr class="text-slate-500 border-b border-slate-700">
                 <th class="text-left pb-0.5 font-medium"></th>
                 <th class="text-right pb-0.5 font-medium">Ref ${refRep && refRep.count > 1 ? "(N=" + refRep.count + ")" : "(N=1)"}</th>
                 <th class="text-right pb-0.5 font-medium">Smp ${sampleRep && sampleRep.count > 1 ? "(N=" + sampleRep.count + ")" : samplePatches ? "(N=1)" : "–"}</th>
+                <th class="text-right pb-0.5 font-medium"></th>
               </tr>
             </thead>
             <tbody class="text-slate-300">
@@ -1794,26 +1807,31 @@ function handlePatchClick(id) {
                 <td class="text-slate-500 pr-2 py-px">σL</td>
                 <td class="text-right py-px">${repCell(refRep, "stdL")}</td>
                 <td class="text-right py-px">${repCell(sampleRep, "stdL")}</td>
+                <td></td>
               </tr>
               <tr>
                 <td class="text-slate-500 pr-2 py-px">σa</td>
                 <td class="text-right py-px">${repCell(refRep, "stdA")}</td>
                 <td class="text-right py-px">${repCell(sampleRep, "stdA")}</td>
+                <td></td>
               </tr>
               <tr>
                 <td class="text-slate-500 pr-2 py-px">σb</td>
                 <td class="text-right py-px">${repCell(refRep, "stdB")}</td>
                 <td class="text-right py-px">${repCell(sampleRep, "stdB")}</td>
+                <td></td>
               </tr>
               <tr class="border-t border-slate-800">
                 <td class="text-slate-500 pr-2 py-px">mean ΔE00</td>
                 <td class="text-right py-px">${repCell(refRep, "meanDE")}</td>
                 <td class="text-right py-px">${repCell(sampleRep, "meanDE")}</td>
+                <td></td>
               </tr>
               <tr>
                 <td class="text-slate-500 pr-2 py-px">max ΔE00</td>
                 <td class="text-right py-px">${repCell(refRep, "maxDE")}</td>
                 <td class="text-right py-px">${repCell(sampleRep, "maxDE")}</td>
+                <td></td>
               </tr>
             </tbody>
           </table>
