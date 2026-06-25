@@ -84,7 +84,7 @@ const headerToggleButton = document.getElementById("headerToggleButton");
 const headerControls     = document.getElementById("headerControls");
 const clearRefButton     = document.getElementById("clearRefButton");
 const clearSampleButton  = document.getElementById("clearSampleButton");
-const modeLegend = document.getElementById("modeLegend");
+const modeLegend         = document.getElementById("modeLegend");
 const heatmapLegend      = document.getElementById("heatmapLegend");
 const heatmapLegendLabel = document.getElementById("heatmapLegendLabel");
 const viewModeCaption    = document.getElementById("viewModeCaption");
@@ -106,16 +106,9 @@ if (headerToggleButton && headerControls) {
     const isHidden = headerControls.classList.toggle("hidden");
     headerToggleButton.textContent = isHidden ? "Show controls" : "Hide controls";
 
-    // Also hide/show the view toggle strip and mode controls
-    if (primaryViewToggle) primaryViewToggle.classList.toggle("hidden", isHidden);
-    if (modeControlsEl)    modeControlsEl.classList.toggle("hidden", isHidden);
-    // For heatmap legend: hide when collapsing; on expand let updateView re-evaluate
-    if (isHidden && heatmapLegend) heatmapLegend.classList.add("hidden");
     if (!isHidden) updateView();
 
-    // If a graph is expanded, recalculate its height for the new visible area
     if (expandedGraphId) {
-      // Use rAF so the DOM has reflowed and the new header height is settled
       requestAnimationFrame(() => applyExpandedGraphHeight(expandedGraphId));
     }
   });
@@ -366,8 +359,10 @@ function setViewMode(mode) {
     if (mode === "index") {
       refreshIndexControls();
       indexControls.classList.remove("hidden");
+      indexControls.classList.add("flex");
     } else {
       indexControls.classList.add("hidden");
+      indexControls.classList.remove("flex");
     }
   }
 
@@ -961,7 +956,7 @@ function updateView() {
     if (primaryView === "chart") {
       if (showDelta) {
         heatmapLegend.classList.remove("hidden");
-        if (heatmapLegendLabel) heatmapLegendLabel.textContent = "ΔE00 (ref vs sample)";
+        if (heatmapLegendLabel) heatmapLegendLabel.textContent = "ΔE00";
       } else if (showRefRepeat) {
         heatmapLegend.classList.remove("hidden");
         if (heatmapLegendLabel) heatmapLegendLabel.textContent = "Repeatability ΔE00 (reference set)";
@@ -1602,110 +1597,73 @@ function handlePatchClick(id) {
   const refRep = ref.repeatStats || null;
   const sampleRep = sample ? sample.repeatStats || null : null;
 
-  let refRepHtml = `
-    <div class="text-slate-500 text-[11px]">
-      No repeatability data (1 file) for reference.
-    </div>
-  `;
-  if (refRep && refRep.count > 1) {
-    refRepHtml = `
-      <div class="text-slate-300 text-[11px]">
-        N = ${refRep.count} ref files ·
-        σL = ${fmt(refRep.stdL, 2)},
-        σa = ${fmt(refRep.stdA, 2)},
-        σb = ${fmt(refRep.stdB, 2)}<br/>
-        mean ΔE00 (vs mean) = ${fmt(refRep.meanDE, 2)},
-        max ΔE00 = ${fmt(refRep.maxDE, 2)}
-      </div>
-    `;
-  }
+  // --- Helpers -----------------------------------------------------------------
+  const dColor = (v, isDE = false) => {
+    if (v == null || Number.isNaN(v)) return "text-slate-500";
+    const abs = Math.abs(v);
+    if (isDE) {
+      if (abs < 1)  return "text-emerald-400";
+      if (abs < 2)  return "text-yellow-400";
+      if (abs < 4)  return "text-orange-400";
+      return "text-red-400";
+    }
+    if (abs < 0.5) return "text-emerald-400";
+    if (abs < 1)   return "text-yellow-400";
+    if (abs < 2)   return "text-orange-400";
+    return "text-red-400";
+  };
 
-  let sampleRepHtml = `
-    <div class="text-slate-500 text-[11px]">
-      No repeatability data (1 file) for sample.
-    </div>
-  `;
-  if (sampleRep && sampleRep.count > 1) {
-    sampleRepHtml = `
-      <div class="text-slate-300 text-[11px]">
-        N = ${sampleRep.count} sample files ·
-        σL = ${fmt(sampleRep.stdL, 2)},
-        σa = ${fmt(sampleRep.stdA, 2)},
-        σb = ${fmt(sampleRep.stdB, 2)}<br/>
-        mean ΔE00 (vs mean) = ${fmt(sampleRep.meanDE, 2)},
-        max ΔE00 = ${fmt(sampleRep.maxDE, 2)}
-      </div>
-    `;
-  }
+  const fmtDelta = (v, digits = 2) => {
+    if (v == null || Number.isNaN(v)) return "–";
+    return (v >= 0 ? "+" : "") + v.toFixed(digits);
+  };
 
-  // --- Build index text rows -------------------------------------------------
-  let indexRowsHtml = "";
-  channels.forEach((ch) => {
-    const refVal =
-      ref.indexValues && ref.indexValues[ch] != null
-        ? ref.indexValues[ch]
-        : null;
-    const sampleVal =
-      sample && sample.indexValues && sample.indexValues[ch] != null
-        ? sample.indexValues[ch]
-        : null;
+  const repCell = (rep, field) => {
+    if (!rep || rep.count <= 1) return '<span class="text-slate-700">–</span>';
+    return fmt(rep[field], 2);
+  };
 
-    indexRowsHtml += `
-      <div class="flex justify-between gap-2">
-        <span>${ch}</span>
-        <span>
-          Ref: ${fmtInt(refVal)}% · Sample: ${fmtInt(sampleVal)}%
-        </span>
-      </div>
-    `;
-  });
-  if (!indexRowsHtml) {
-    indexRowsHtml = `
-      <div class="text-slate-500 text-[11px]">
-        No index values available for this patch.
-      </div>
-    `;
-  }
-
-  // --- Build index bar chart rows -------------------------------------------
+  // --- Index channel bars (ref + sample paired) --------------------------------
   let indexBarsHtml = "";
   channels.forEach((ch) => {
-    const refVal =
-      ref.indexValues && ref.indexValues[ch] != null
-        ? ref.indexValues[ch]
-        : null;
-    const sampleVal =
-      sample && sample.indexValues && sample.indexValues[ch] != null
-        ? sample.indexValues[ch]
-        : null;
+    const refVal = ref.indexValues && ref.indexValues[ch] != null ? ref.indexValues[ch] : null;
+    const smpVal = sample && sample.indexValues && sample.indexValues[ch] != null ? sample.indexValues[ch] : null;
+    if (refVal == null && smpVal == null) return;
 
-    const barSource = sampleVal != null ? sampleVal : refVal;
-    if (barSource == null) return;
+    const refWidth = refVal != null ? Math.max(2, Math.round(Math.min(100, refVal))) : 0;
+    const smpWidth = smpVal != null ? Math.max(2, Math.round(Math.min(100, smpVal))) : 0;
 
-    const v = Math.max(0, Math.min(100, barSource));
-    const width = Math.max(3, Math.round(v));
-
-    const rgb = indexValueToRGB(ch, v / 100);
-    const barColor = rgbToCSS(rgb);
+    const refRgbIdx = indexValueToRGB(ch, (refVal || 0) / 100);
+    const refBarColor = rgbToCSS(refRgbIdx);
+    const smpRgbIdx = indexValueToRGB(ch, (smpVal || 0) / 100);
+    const smpBarColor = rgbToCSS(smpRgbIdx);
 
     indexBarsHtml += `
-      <div class="flex flex-col gap-0.5">
-        <div class="flex justify-between text-[10px]">
-          <span>${ch}</span>
-          <span>${fmtInt(barSource)}%</span>
-        </div>
-        <div class="h-2 w-full bg-slate-800 rounded overflow-hidden">
-          <div class="h-full" style="width:${width}%;background:${barColor};"></div>
-        </div>
+      <div>
+        <div class="text-[10px] text-slate-400 mb-0.5">${ch}</div>
+        ${refVal != null ? `
+          <div class="flex items-center gap-1.5 mb-0.5">
+            <span class="text-[9px] text-slate-500 w-6 shrink-0">Ref</span>
+            <div class="flex-1 h-1.5 bg-slate-800 rounded overflow-hidden">
+              <div class="h-full rounded" style="width:${refWidth}%;background:${refBarColor};opacity:0.65;"></div>
+            </div>
+            <span class="text-[9px] text-slate-400 w-7 text-right">${fmtInt(refVal)}%</span>
+          </div>
+        ` : ""}
+        ${smpVal != null ? `
+          <div class="flex items-center gap-1.5">
+            <span class="text-[9px] text-slate-500 w-6 shrink-0">Smp</span>
+            <div class="flex-1 h-1.5 bg-slate-800 rounded overflow-hidden">
+              <div class="h-full rounded" style="width:${smpWidth}%;background:${smpBarColor};"></div>
+            </div>
+            <span class="text-[9px] text-slate-400 w-7 text-right">${fmtInt(smpVal)}%</span>
+          </div>
+        ` : ""}
       </div>
     `;
   });
   if (!indexBarsHtml) {
-    indexBarsHtml = `
-      <div class="text-slate-500 text-[10px]">
-        No index channels to chart.
-      </div>
-    `;
+    indexBarsHtml = `<div class="text-slate-500 text-[10px]">No index channels available.</div>`;
   }
 
   // --- Density (pure ink patches with spectral data only) --------------------
@@ -1752,94 +1710,128 @@ function handlePatchClick(id) {
   }
 
   const html = `
-    <div class="font-semibold text-slate-100 mb-1 text-xs">
-      Selected patch: ${id}
+    <div class="font-semibold text-slate-100 mb-2 text-xs">
+      Patch: ${id}&nbsp;·&nbsp;Page ${page}, Row ${row}, Col ${col}
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
-      <!-- Textual data -->
-      <div class="space-y-1">
-        <div class="text-slate-300">
-          <span class="text-slate-400">Location:</span>
-          Page ${page}, Row ${row}, Col ${col}
-        </div>
-        <div class="text-slate-300">
-          <span class="text-slate-400">Sample ID:</span>
-          ${id}
-        </div>
-        ${refTAC != null || sampleTAC != null ? `
-        <div class="text-slate-300">
-          <span class="text-slate-400">TAC:</span>
-          Ref: ${refTAC != null ? fmtInt(refTAC) + '%' : '–'}${sampleTAC != null ? ' · Sample: ' + fmtInt(sampleTAC) + '%' : ''}
-        </div>
-        ` : ''}
+    <div class="grid grid-cols-[auto_1fr_1fr] gap-4 text-[11px] items-start">
 
-
-        <div class="mt-1 border-t border-slate-700 pt-1">
-          <div class="font-semibold text-slate-200 mb-1">Reference (LabCh)</div>
-          <div class="grid grid-cols-5 gap-x-2">
-            <div>L: ${fmt(ref.L, 2)}</div>
-            <div>a: ${fmt(ref.a, 2)}</div>
-            <div>b: ${fmt(ref.b, 2)}</div>
-            <div>C: ${fmt(refC, 2)}</div>
-            <div>h: ${fmt(refh, 1)}°</div>
-          </div>
+      <!-- Col 1: color chips -->
+      <div class="flex flex-col items-center gap-2">
+        <div class="flex flex-col items-center gap-0.5">
+          <div class="w-20 h-32 rounded border border-slate-600" style="background:${refCss};"></div>
+          <div class="text-[9px] text-slate-400">Reference</div>
         </div>
-
-        <div class="mt-1 border-t border-slate-700 pt-1">
-          <div class="font-semibold text-slate-200 mb-1">Sample (LabCh)</div>
-          <div class="grid grid-cols-5 gap-x-2">
-            <div>L: ${sample ? fmt(sample.L, 2) : "–"}</div>
-            <div>a: ${sample ? fmt(sample.a, 2) : "–"}</div>
-            <div>b: ${sample ? fmt(sample.b, 2) : "–"}</div>
-            <div>C: ${sample ? fmt(sampleC, 2) : "–"}</div>
-            <div>h: ${sample ? fmt(sampleh, 1) + "°" : "–"}</div>
-          </div>
-        </div>
-
-        <div class="mt-1 border-t border-slate-700 pt-1">
-          <div class="font-semibold text-slate-200 mb-1">Deltas (Sample − Ref)</div>
-          <div class="grid grid-cols-6 gap-x-2">
-            <div>ΔL: ${fmt(dL, 2)}</div>
-            <div>Δa: ${fmt(da, 2)}</div>
-            <div>Δb: ${fmt(db, 2)}</div>
-            <div>ΔC: ${fmt(dC, 2)}</div>
-            <div>Δh: ${fmt(dh, 1)}°</div>
-            <div>ΔE00: ${fmt(dE, 2)}</div>
-          </div>
-        </div>
-
-        ${densityHtml}
-
-        <div class="mt-1 border-t border-slate-700 pt-1">
-          <div class="font-semibold text-slate-200 mb-1">Repeatability</div>
-          <div class="space-y-0.5">
-            <div><span class="text-slate-400">Reference:</span> ${refRepHtml}</div>
-            <div><span class="text-slate-400">Sample:</span> ${sampleRepHtml}</div>
-          </div>
+        <div class="flex flex-col items-center gap-0.5">
+          <div class="w-20 h-32 rounded border border-slate-600" style="background:${sampleCss};"></div>
+          <div class="text-[9px] text-slate-400">Sample</div>
         </div>
       </div>
 
-      <!-- Color chips + index chart -->
-      <div class="flex flex-col items-center justify-center gap-3">
-        <div class="flex gap-4 items-center">
-          <div class="flex flex-col items-center gap-1">
-            <div class="w-20 h-12 rounded border border-slate-600" style="background:${refCss};"></div>
-            <div class="text-[10px] text-slate-300">Reference</div>
-          </div>
-          <div class="flex flex-col items-center gap-1">
-            <div class="w-20 h-12 rounded border border-slate-600" style="background:${sampleCss};"></div>
-            <div class="text-[10px] text-slate-300">Sample</div>
-          </div>
-        </div>
+      <!-- Col 2: Lab / ΔE table -->
+      <div class="border-l border-slate-700 pl-3">
+        <div class="font-semibold text-slate-300 mb-1 text-[11px]">Lab / Color</div>
+        <table class="w-full text-[10px] border-collapse">
+          <thead>
+            <tr class="text-slate-500 border-b border-slate-700">
+              <th class="text-left pb-0.5 font-medium w-5"></th>
+              <th class="text-right pb-0.5 font-medium">Ref</th>
+              <th class="text-right pb-0.5 font-medium">Sample</th>
+              <th class="text-right pb-0.5 font-medium">Δ</th>
+            </tr>
+          </thead>
+          <tbody class="text-slate-300">
+            <tr>
+              <td class="text-slate-500 pr-2 py-px">L</td>
+              <td class="text-right py-px">${fmt(ref.L, 2)}</td>
+              <td class="text-right py-px">${sample ? fmt(sample.L, 2) : "–"}</td>
+              <td class="text-right py-px ${dColor(dL)}">${fmtDelta(dL)}</td>
+            </tr>
+            <tr>
+              <td class="text-slate-500 pr-2 py-px">a</td>
+              <td class="text-right py-px">${fmt(ref.a, 2)}</td>
+              <td class="text-right py-px">${sample ? fmt(sample.a, 2) : "–"}</td>
+              <td class="text-right py-px ${dColor(da)}">${fmtDelta(da)}</td>
+            </tr>
+            <tr>
+              <td class="text-slate-500 pr-2 py-px">b</td>
+              <td class="text-right py-px">${fmt(ref.b, 2)}</td>
+              <td class="text-right py-px">${sample ? fmt(sample.b, 2) : "–"}</td>
+              <td class="text-right py-px ${dColor(db)}">${fmtDelta(db)}</td>
+            </tr>
+            <tr class="border-t border-slate-800">
+              <td class="text-slate-500 pr-2 py-px">C</td>
+              <td class="text-right py-px">${fmt(refC, 2)}</td>
+              <td class="text-right py-px">${sample ? fmt(sampleC, 2) : "–"}</td>
+              <td class="text-right py-px ${dColor(dC)}">${fmtDelta(dC)}</td>
+            </tr>
+            <tr>
+              <td class="text-slate-500 pr-2 py-px">h</td>
+              <td class="text-right py-px">${fmt(refh, 1)}°</td>
+              <td class="text-right py-px">${sample ? fmt(sampleh, 1) + "°" : "–"}</td>
+              <td class="text-right py-px ${dColor(dh)}">${dh != null ? fmtDelta(dh, 1) + "°" : "–"}</td>
+            </tr>
+            <tr class="border-t border-slate-700">
+              <td class="text-slate-500 pr-2 py-0.5 font-semibold" colspan="3">ΔE00</td>
+              <td class="text-right py-0.5 font-semibold ${dColor(dE, true)}">${fmt(dE, 2)}</td>
+            </tr>
+          </tbody>
+        </table>
+        ${densityHtml}
 
-        <div class="w-full max-w-xs mt-2">
-          <div class="text-[10px] text-slate-400 mb-1">
-            Index values chart (0–100%)
-          </div>
-          <div class="space-y-1">
-            ${indexBarsHtml}
-          </div>
+        <div class="mt-2 border-t border-slate-700 pt-2">
+          <div class="font-semibold text-slate-300 mb-1 text-[11px]">Repeatability</div>
+          <table class="w-full text-[10px] border-collapse">
+            <thead>
+              <tr class="text-slate-500 border-b border-slate-700">
+                <th class="text-left pb-0.5 font-medium"></th>
+                <th class="text-right pb-0.5 font-medium">Ref ${refRep && refRep.count > 1 ? "(N=" + refRep.count + ")" : "(N=1)"}</th>
+                <th class="text-right pb-0.5 font-medium">Smp ${sampleRep && sampleRep.count > 1 ? "(N=" + sampleRep.count + ")" : samplePatches ? "(N=1)" : "–"}</th>
+              </tr>
+            </thead>
+            <tbody class="text-slate-300">
+              <tr>
+                <td class="text-slate-500 pr-2 py-px">σL</td>
+                <td class="text-right py-px">${repCell(refRep, "stdL")}</td>
+                <td class="text-right py-px">${repCell(sampleRep, "stdL")}</td>
+              </tr>
+              <tr>
+                <td class="text-slate-500 pr-2 py-px">σa</td>
+                <td class="text-right py-px">${repCell(refRep, "stdA")}</td>
+                <td class="text-right py-px">${repCell(sampleRep, "stdA")}</td>
+              </tr>
+              <tr>
+                <td class="text-slate-500 pr-2 py-px">σb</td>
+                <td class="text-right py-px">${repCell(refRep, "stdB")}</td>
+                <td class="text-right py-px">${repCell(sampleRep, "stdB")}</td>
+              </tr>
+              <tr class="border-t border-slate-800">
+                <td class="text-slate-500 pr-2 py-px">mean ΔE00</td>
+                <td class="text-right py-px">${repCell(refRep, "meanDE")}</td>
+                <td class="text-right py-px">${repCell(sampleRep, "meanDE")}</td>
+              </tr>
+              <tr>
+                <td class="text-slate-500 pr-2 py-px">max ΔE00</td>
+                <td class="text-right py-px">${repCell(refRep, "maxDE")}</td>
+                <td class="text-right py-px">${repCell(sampleRep, "maxDE")}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Col 3: index channels + TAC -->
+      <div class="border-l border-slate-700 pl-3 flex flex-col gap-3">
+        <div>
+          <div class="font-semibold text-slate-300 mb-1 text-[11px]">Index channels</div>
+          <div class="space-y-1.5">${indexBarsHtml}</div>
+          ${refTAC != null || sampleTAC != null ? `
+            <div class="mt-1.5 pt-1.5 border-t border-slate-700 text-[10px] text-slate-300 flex gap-3">
+              <span class="text-slate-500">TAC</span>
+              ${refTAC != null ? `<span>Ref: <span class="text-slate-100 font-semibold">${fmtInt(refTAC)}%</span></span>` : ""}
+              ${sampleTAC != null ? `<span>Smp: <span class="text-slate-100 font-semibold">${fmtInt(sampleTAC)}%</span></span>` : ""}
+            </div>
+          ` : ""}
         </div>
       </div>
     </div>

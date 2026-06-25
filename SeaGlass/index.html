@@ -180,404 +180,179 @@
   <div class="bg-teal-950/75 max-w-7xl mx-auto py-8 px-4">
 
   <header class="sticky top-8 z-20 bg-teal-950/95 backdrop-blur border-b border-teal-800 mb-4">
-          <a 
-              href="https://biggitools.com" 
-              target="_blank"
-              style="
-                position: fixed;
-                top: 12px;
-                right: 16px;
-                font-size: 12px;
-                color: #cbd5f5;
-                text-decoration: none;
-                background: rgba(2, 6, 23, 0.7);
-                padding: 6px 10px;
-                border-radius: 999px;
-                border: 1px solid rgba(56, 189, 248, 0.4);
-              "
-            >
-              ← Back to BiggiTools
-        </a>   
-    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col gap-4">
+    <a
+      href="https://biggitools.com"
+      target="_blank"
+      style="position:fixed;top:12px;right:16px;font-size:12px;color:#cbd5f5;text-decoration:none;background:rgba(2,6,23,0.7);padding:6px 10px;border-radius:999px;border:1px solid rgba(56,189,248,0.4);"
+    >← Back to BiggiTools</a>
 
-      <!-- Title + collapse button (unchanged) -->
-      <div class="flex items-end my-2">
-        <h1 class="text-5xl font-semibold font-barriecito mx-1">
-          SeaGlass
-        </h1>
-        <h3 class="text-xs font-quicksand">v260624</h3>
-        <h2 class="text-1xl font-semibold font-quicksand mx-4">
-            View and compare your CGATS files
-        </h2>
+    <div class="max-w-7xl mx-auto px-4 py-2 flex flex-col gap-2">
 
-
+      <!-- Title row -->
+      <div class="flex items-end gap-1 py-1">
+        <h1 class="text-5xl font-semibold font-barriecito leading-none">SeaGlass</h1>
+        <span class="text-xs text-slate-400 font-quicksand">v260625</span>
+        <span class="text-1xl text-slate-300 font-semiboldfont-quicksand ml-5">View and compare your CGATS files</span>
         <button
           id="headerToggleButton"
           type="button"
-          class="text-xs px-2 py-1 mx-12 rounded-full border border-slate-600 bg-slate-800/80 text-slate-100 hover:bg-slate-700/80"
-        >
-          Hide controls
-        </button>
+          class="ml-20 text-xs px-2 py-1 rounded-full border border-slate-600 bg-slate-800/80 text-slate-100 hover:bg-slate-700/80"
+        >Hide controls</button>
       </div>
 
-      <!-- Two-column header layout -->
-      <div
-        id="headerControls"
-        class="grid gap-3 md:grid-cols-[1fr_minmax(260px,320px)] items-start"
-      >
-        <!-- LEFT: info panel (mode, legend, debug, inspector) -->
-        <div class="flex flex-col gap-2">
-          <!-- File inputs + stats grid -->
-          <div
-            class="grid gap-3 py-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-start"
-          >
-            <!-- Reference chart -->
-            <div class="flex flex-col gap-1">
-              <span class="text-sm font-medium">Reference chart <span class="text-xs text-slate-300 font-normal">(load one or multiple CGATS files)</span></span>
-              <div class="flex items-center gap-2">
-                <input
-                  id="refFile"
-                  type="file"
-                  multiple
-                  accept=".txt,.cgats,.cie,.dat"
-                  class="block w-full text-sm text-slate-200
-                        file:mr-4 file:py-2 file:px-4
-                        file:rounded-md file:border-0
-                        file:text-sm file:font-semibold
-                        file:bg-emerald-700 file:text-white
-                        hover:file:bg-emerald-600"
-                />
-                <button
-                  id="clearRefButton"
-                  type="button"
-                  class="shrink-0 px-2 py-1 mx-8 text-xs rounded-full border border-slate-600
-                        bg-slate-800/80 text-slate-200 hover:bg-slate-700/80"
-                  title="Clear reference"
-                >
-                  ✕
-                </button>
-              </div>
-              <div id="refFilesList" class="text-xs text-slate-300 line-clamp-2"></div>
-            </div>
+      <!-- All controls + contextual panels -->
+      <div id="headerControls" class="flex gap-3 items-start border-t border-slate-700/40 pt-2 pb-1">
+      <div class="flex-1 min-w-0 flex flex-col gap-2">
 
-            <!-- Sample chart -->
-            <div class="flex flex-col gap-1">
-              <span class="text-sm font-medium">Sample chart <span class="text-xs text-slate-300 font-normal">(load one or multiple CGATS files)</span></span>
-              <div class="flex items-center gap-2">
-                <input
-                  id="sampleFile"
-                  type="file"
-                  multiple
-                  accept=".txt,.cgats,.cie,.dat"
-                  class="block w-full text-sm text-slate-200
-                        file:mr-4 file:py-2 file:px-4
-                        file:rounded-md file:border-0
-                        file:text-sm file:font-semibold
-                        file:bg-emerald-700 file:text-white
-                        hover:file:bg-emerald-600"
-                />
-                <button
-                  id="clearSampleButton"
-                  type="button"
-                  class="shrink-0 px-2 py-1 mx-8 text-xs rounded-full border border-slate-600
-                        bg-slate-800/80 text-slate-200 hover:bg-slate-700/80"
-                  title="Clear sample"
-                >
-                  ✕
-                </button>
-              </div>
-              <div id="sampleFilesList" class="text-xs text-slate-300 line-clamp-2"></div>
-            </div>
+        <!-- Row 1: file inputs side by side -->
+        <div class="flex mt-1 mb-3 items-start gap-3">
+
+          <!-- REF file -->
+          <div id="refFileGroup" class="flex items-center gap-1.5">
+            <span class="text-[14px] font-stretch-condensed font-semibold text-slate-400 uppercase tracking-wider shrink-0">Reference</span>
+            <label for="refFile" class="py-0.5 px-2.5 rounded text-[11px] font-semibold bg-emerald-700 text-white cursor-pointer hover:bg-emerald-600 shrink-0">Choose files</label>
+            <input id="refFile" type="file" multiple accept=".txt,.cgats,.cie,.dat" class="sr-only" />
+            <span id="refFilesList" class="text-[10px] text-slate-400 truncate max-w-[250px]"></span>
+            <button id="clearRefButton" type="button" class="text-slate-500 hover:text-slate-200 text-xs leading-none shrink-0" title="Clear reference">✕</button>
           </div>
 
+          <div class="w-px h-5 bg-slate-700 self-center shrink-0"></div>
 
-
-        </div>
-
-        <!-- RIGHT: controls + overall statistics -->
-        <div class="flex flex-col gap-2">
-
-          <!-- Overall ΔE / repeatability statistics -->
-          <div
-            id="statsPanel"
-            class="mt-1 text-xs text-slate-200 border border-slate-700 bg-slate-900/60 rounded-lg p-2"
-          >
-            <div class="font-semibold text-slate-100 mb-1 text-xs">
-              ΔE00 statistics
-            </div>
-            <div class="text-[11px] text-slate-300">
-              Load a reference and sample chart to see statistics.
-            </div>
+          <!-- SMP file -->
+          <div id="smpFileGroup" class="flex items-center gap-1.5">
+            <span class="text-[14px] font-stretch-condensed font-semibold text-slate-400 uppercase tracking-wider shrink-0">Sample</span>
+            <label for="sampleFile" class="py-0.5 px-2.5 rounded text-[11px] font-semibold bg-emerald-700 text-white cursor-pointer hover:bg-emerald-600 shrink-0">Choose files</label>
+            <input id="sampleFile" type="file" multiple accept=".txt,.cgats,.cie,.dat" class="sr-only" />
+            <span id="sampleFilesList" class="text-[10px] text-slate-400 truncate max-w-[250px]"></span>
+            <button id="clearSampleButton" type="button" class="text-slate-500 hover:text-slate-200 text-xs leading-none shrink-0" title="Clear sample">✕</button>
           </div>
 
         </div>
-      </div>
 
-      <!-- Primary view toggle -->
-      <div id="primaryViewToggle" class="flex items-center gap-3 pb-1 border-b border-slate-700/50">
-        <span class="text-xs text-slate-400 font-medium">View:</span>
-        <div class="flex rounded-full border border-slate-600 bg-slate-900/60 overflow-hidden text-xs font-semibold">
+        <!-- Row 2: view toggle + mode buttons + search -->
+        <div class="flex items-center gap-2">
+
+          <!-- Chart / Graph toggle -->
+          <div id="primaryViewToggle" class="flex rounded-full border border-slate-600 bg-slate-900/60 overflow-hidden text-xs font-semibold shrink-0">
+            <button id="toggleChartView" type="button" class="px-4 py-2 transition-colors bg-emerald-700 text-white">Chart</button>
+            <button id="toggleGraphView" type="button" class="px-4 py-2 transition-colors text-slate-400 hover:bg-slate-700/60">Graph</button>
+          </div>
+
+          <!-- Search button — stays visible in graph view -->
+          <div class="w-px h-5 bg-slate-700 self-center shrink-0"></div>
           <button
-            id="toggleChartView"
+            id="searchToggleBtn"
             type="button"
-            class="px-4 py-1.5 transition-colors bg-emerald-700 text-white"
+            class="w-8 h-8 rounded-lg border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform shrink-0"
+            title="Search patches by index values"
           >
-            Chart
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-slate-300">
+              <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd"/>
+            </svg>
           </button>
-          <button
-            id="toggleGraphView"
-            type="button"
-            class="px-4 py-1.5 transition-colors text-slate-400 hover:bg-slate-700/60"
-          >
-            Graph
-          </button>
-        </div>
-      </div>
+          
+          <!-- Mode buttons (chart view only) — includes leading divider -->
+          <div id="modeControls" class="flex items-center gap-1.5">
+            <div class="w-px h-5 bg-slate-700 self-center shrink-0"></div>
 
-      <!-- Mode control area -->
-        <div
-          id="modeControls"
-          class="flex gap-3 md:grid-cols-[1fr_minmax(100px,260px)] items-start"
-        >
-                  <!-- View mode controls (icon strip) -->
-          <div
-            id="viewModeControls"
-            class="flex flex-col items-center gap-2 text-xs text-slate-200"
-          >
-            <!-- Icon buttons row -->
-            <div class="flex items-center justify-center gap-1.5">
-              <!-- Reference colors -->
-              <button
-                type="button"
-                class="view-mode-btn mode-icon-btn w-10 h-10 rounded-xl border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform"
-                data-mode="refColors"
-              >
-                <img
-                  src="/SeaGlass/assets/icon_Reference.png"
-                  alt="Reference colors"
-                  class="max-w-[70%] max-h-[70%]"
-                />
+            <!-- View mode icon buttons -->
+            <div id="viewModeControls" class="flex items-center gap-1">
+              <button type="button" class="view-mode-btn mode-icon-btn w-8 h-8 rounded-lg border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform" data-mode="refColors">
+                <img src="/SeaGlass/assets/icon_Reference.png" alt="Reference colors" class="max-w-[70%] max-h-[70%]" />
               </button>
-
-              <!-- Sample colors -->
-              <button
-                type="button"
-                class="view-mode-btn mode-icon-btn w-10 h-10 rounded-xl border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform"
-                data-mode="sampleColors"
-              >
-                <img
-                  src="/SeaGlass/assets/icon_Sample.png"
-                  alt="Sample colors"
-                  class="max-w-[70%] max-h-[70%]"
-                />
+              <button type="button" class="view-mode-btn mode-icon-btn w-8 h-8 rounded-lg border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform" data-mode="sampleColors">
+                <img src="/SeaGlass/assets/icon_Sample.png" alt="Sample colors" class="max-w-[70%] max-h-[70%]" />
               </button>
-
-              <!-- ΔE heatmap -->
-              <button
-                type="button"
-                class="view-mode-btn mode-icon-btn w-10 h-10 rounded-xl border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform"
-                data-mode="deltaE"
-              >
-                <img
-                  src="/SeaGlass/assets/icon_DeltaE.png"
-                  alt="ΔE heatmap"
-                  class="max-w-[70%] max-h-[70%]"
-                />
+              <button type="button" class="view-mode-btn mode-icon-btn w-8 h-8 rounded-lg border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform" data-mode="deltaE">
+                <img src="/SeaGlass/assets/icon_DeltaE.png" alt="ΔE heatmap" class="max-w-[70%] max-h-[70%]" />
               </button>
-
-              <!-- ΔLab (no icon provided → text fallback) -->
-              <button
-                type="button"
-                class="view-mode-btn mode-icon-btn w-10 h-10 rounded-xl border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform"
-                data-mode="deltaLab"
-              >
-                <img
-                  src="/SeaGlass/assets/icon_DeltaLab.png"
-                  alt="ΔLab coloring"
-                  class="max-w-[70%] max-h-[70%]"
-                />
+              <button type="button" class="view-mode-btn mode-icon-btn w-8 h-8 rounded-lg border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform" data-mode="deltaLab">
+                <img src="/SeaGlass/assets/icon_DeltaLab.png" alt="ΔLab coloring" class="max-w-[70%] max-h-[70%]" />
               </button>
-
-              <!-- Index / channels -->
-              <button
-                type="button"
-                class="view-mode-btn mode-icon-btn w-10 h-10 rounded-xl border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform"
-                data-mode="index"
-              >
-                <img
-                  src="/SeaGlass/assets/icon_Channels.png"
-                  alt="Index values"
-                  class="max-w-[70%] max-h-[70%]"
-                />
+              <button type="button" class="view-mode-btn mode-icon-btn w-8 h-8 rounded-lg border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform" data-mode="index">
+                <img src="/SeaGlass/assets/icon_Channels.png" alt="Index values" class="max-w-[70%] max-h-[70%]" />
               </button>
-
-              <!-- Pure ink channels -->
-              <button
-                type="button"
-                class="view-mode-btn mode-icon-btn w-10 h-10 rounded-xl border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform"
-                data-mode="inkChannels"
-              >
-                <img
-                  src="/SeaGlass/assets/icon_Inks.png"
-                  alt="Pure ink channels"
-                  class="max-w-[70%] max-h-[70%]"
-                />
+              <button type="button" class="view-mode-btn mode-icon-btn w-8 h-8 rounded-lg border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform" data-mode="inkChannels">
+                <img src="/SeaGlass/assets/icon_Inks.png" alt="Pure ink channels" class="max-w-[70%] max-h-[70%]" />
               </button>
-
-              <!-- Reference repeatability -->
-              <button
-                type="button"
-                class="view-mode-btn mode-icon-btn w-10 h-10 rounded-xl border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform"
-                data-mode="refRepeat"
-              >
-                <img
-                  src="/SeaGlass/assets/icon_ReferenceRepeatability.png"
-                  alt="Reference repeatability"
-                  class="max-w-[70%] max-h-[70%]"
-                />
+              <button type="button" class="view-mode-btn mode-icon-btn w-8 h-8 rounded-lg border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform" data-mode="refRepeat">
+                <img src="/SeaGlass/assets/icon_ReferenceRepeatability.png" alt="Reference repeatability" class="max-w-[70%] max-h-[70%]" />
               </button>
-
-              <!-- Sample repeatability -->
-              <button
-                type="button"
-                class="view-mode-btn mode-icon-btn w-10 h-10 rounded-xl border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform"
-                data-mode="sampleRepeat"
-              >
-                <img
-                  src="/SeaGlass/assets/icon_SampleRepeatability.png"
-                  alt="Sample repeatability"
-                  class="max-w-[70%] max-h-[70%]"
-                />
-              </button>
-
-              <!-- Divider -->
-              <div class="w-px h-6 bg-slate-600 mx-1 self-center"></div>
-
-              <!-- Search patches -->
-              <button
-                id="searchToggleBtn"
-                type="button"
-                class="w-10 h-10 rounded-xl border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform"
-                title="Search patches by index values"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-slate-300">
-                  <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd"/>
-                </svg>
+              <button type="button" class="view-mode-btn mode-icon-btn w-8 h-8 rounded-lg border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform" data-mode="sampleRepeat">
+                <img src="/SeaGlass/assets/icon_SampleRepeatability.png" alt="Sample repeatability" class="max-w-[70%] max-h-[70%]" />
               </button>
             </div>
 
-            <!-- Caption for currently-selected mode -->
-            <div
-              id="viewModeCaption"
-              class="mt-1 text-[11px] text-slate-300 h-4 text-center"
-            >
-              Reference colors
+            <!-- Ink channels toggle (contextual) -->
+            <div id="inkChannelsControls" class="hidden flex-row items-center gap-1">
+              <div class="w-px h-4 bg-slate-700 self-center mx-0.5 shrink-0"></div>
+              <div class="flex rounded overflow-hidden border border-slate-600 text-[10px]">
+                <button id="inkChannelsBtnRef" class="px-2 py-0.5 font-medium bg-emerald-700/70 text-emerald-100">Ref</button>
+                <button id="inkChannelsBtnSmp" class="px-2 py-0.5 bg-slate-700 text-slate-300">Smp</button>
+              </div>
             </div>
 
-                      <!-- Ink Channels dataset toggle (Ref / Smp) -->
-          <div
-            id="inkChannelsControls"
-            class="hidden flex-row items-center gap-1.5 text-xs text-slate-200"
-          >
-            <span class="text-[11px] text-slate-300">Show:</span>
-            <div class="flex rounded overflow-hidden border border-slate-600 text-[10px]">
-              <button id="inkChannelsBtnRef"
-                class="px-2 py-0.5 font-medium bg-emerald-700/70 text-emerald-100">Ref</button>
-              <button id="inkChannelsBtnSmp"
-                class="px-2 py-0.5 bg-slate-700 text-slate-300">Smp</button>
+            <!-- Index controls (contextual) -->
+            <div id="indexControls" class="hidden items-center gap-1.5 text-xs">
+              <div class="w-px h-4 bg-slate-700 self-center mx-0.5 shrink-0"></div>
+              <label class="flex items-center gap-1">
+                <span class="text-[11px] text-slate-300 shrink-0">Index:</span>
+                <select id="indexChannelSelect" class="bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-xs"></select>
+              </label>
             </div>
           </div>
-
-                      <!-- Index controls -->
-          <div
-            id="indexControls"
-            class="hidden flex-col items-center justify-end gap-2 text-xs text-slate-200"
-          >
-            <label class="flex items-center gap-1">
-              <span class="text-[11px] text-slate-300">Index channel:</span>
-              <select
-                id="indexChannelSelect"
-                class="bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-xs"
-              ></select>
-            </label>
-            <span id="indexControlsHint" class="text-[11px] text-slate-400">
-              Select an ink/channel to visualize its 0–100% ramp.
-            </span>
-          </div>
-          </div>
-
-          <!-- Mode + summary -->
-          <div class="flex flex-wrap items-start mx-4 gap-3 text-sm text-slate-200">
-            <span>
-              Mode:
-              <span id="modeLabel" class="font-semibold text-emerald-400">
-                Color (reference chart)
-              </span>
-            </span>
-
-            <span id="summary" class="text-slate-400"></span>
-          </div>
-
-          <!-- Mode legend / explanation -->
-          <div id="modeLegend" class="text-xs text-slate-300">
-            Colors show the reference patch color (L*a*b*). Load a sample chart and switch to ΔE mode to see color differences.
-          </div>
-
 
 
         </div>
 
-                  <!-- Heatmap legend -->
-          <div
-            id="heatmapLegend"
-            class="hidden flex items-center gap-3 text-[11px] text-slate-300"
-          >
+        <!-- Row 3: mode label + summary + heatmap legend -->
+        <div class="flex items-center gap-3 flex-wrap">
+
+          <div class="flex items-center gap-2 text-xs min-w-0">
+            <span class="text-slate-400 shrink-0">Mode:</span>
+            <span id="modeLabel" class="font-semibold text-emerald-400 shrink-0">Color (reference chart)</span>
+            <span id="summary" class="text-slate-400 truncate"></span>
+          </div>
+
+          <!-- Heatmap legend (contextual) -->
+          <div id="heatmapLegend" class="hidden flex ml-20 items-center gap-3 text-[11px] text-slate-300">
             <span id="heatmapLegendLabel">ΔE00 scale</span>
-
-            <div class="flex-1 flex flex-col gap-1">
+            <div class="flex flex-col gap-1 w-36">
               <div class="h-2 w-full rounded bg-gradient-to-r from-emerald-400 via-yellow-300 to-red-500"></div>
-              <div class="flex justify-between text-[10px] text-slate-400 w-full">
-                <span>0</span>
-                <span>1</span>
-                <span>3</span>
-                <span>5+</span>
+              <div class="flex justify-between text-[10px] text-slate-400">
+                <span>0</span><span>1</span><span>3</span><span>5+</span>
               </div>
             </div>
           </div>
 
-              <!-- Patch inspector -->
-          <div
-            id="patchDetailsPanel"
-            class="hidden mt-1 text-xs text-slate-200 border border-slate-700 bg-slate-900/60 rounded-lg p-2"
-          >
-            <div class="font-semibold text-slate-100 mb-1 text-xs">
-              Selected patch
-            </div>
-            <div class="text-[11px] text-slate-300">
-              Click on a patch in the chart to inspect its Lab values, ΔE, index channels, repeatability, and more.
-            </div>
-          </div>
-
-      <!-- Search panel (hidden by default, toggled by searchToggleBtn) -->
-      <div
-        id="searchPanel"
-        class="hidden flex-col gap-2 border-t border-slate-700/50 pt-2 pb-2"
-      >
-        <div class="flex flex-wrap items-center gap-2">
-          <span class="text-xs text-slate-400 font-medium shrink-0">Search patches:</span>
-          <div id="searchInputs" class="flex flex-wrap gap-2">
-            <!-- populated dynamically by buildSearchPanel() -->
-          </div>
-          <button
-            id="clearSearchBtn"
-            type="button"
-            class="shrink-0 px-2 py-0.5 text-xs rounded-full border border-slate-600
-                   bg-slate-800/80 text-slate-200 hover:bg-slate-700/80"
-          >
-            ✕ Clear
-          </button>
-          <span id="searchResultCount" class="text-xs text-emerald-400"></span>
         </div>
+
+        <!-- Search panel (contextual) -->
+        <div id="searchPanel" class="hidden flex-col gap-2 border-t border-slate-700/50 pt-2 pb-1">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs text-slate-400 font-medium shrink-0">Search patches:</span>
+            <div id="searchInputs" class="flex flex-wrap gap-2">
+              <!-- populated dynamically by buildSearchPanel() -->
+            </div>
+            <button id="clearSearchBtn" type="button" class="shrink-0 px-2 py-0.5 text-xs rounded-full border border-slate-600 bg-slate-800/80 text-slate-200 hover:bg-slate-700/80">✕ Clear</button>
+            <span id="searchResultCount" class="text-xs text-emerald-400"></span>
+          </div>
+        </div>
+
+      </div><!-- end left column -->
+
+        <!-- ΔE statistics panel — right column -->
+        <div id="statsPanel" class="w-[220px] shrink-0 text-xs text-slate-200 border border-slate-700 bg-slate-900/60 rounded-lg p-2">
+          <div class="font-semibold text-slate-100 mb-1 text-xs">ΔE00 statistics</div>
+          <div class="text-[11px] text-slate-300">Load a reference and sample chart to see statistics.</div>
+        </div>
+
+      </div><!-- end headerControls -->
+
+      <!-- Patch inspector (contextual) -->
+      <div id="patchDetailsPanel" class="hidden text-xs text-slate-200 border border-slate-700 bg-slate-900/60 rounded-lg p-2 mt-2">
+        <div class="font-semibold text-slate-100 mb-1 text-xs">Selected patch</div>
+        <div class="text-[11px] text-slate-300">Click on a patch in the chart to inspect its Lab values, ΔE, index channels, repeatability, and more.</div>
       </div>
 
     </div>
