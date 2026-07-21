@@ -40,14 +40,14 @@ const indexFieldLabMap = {};     // key: channel name (e.g. "7CLR_1") → { L, a
 const indexFieldInkNameMap = {}; // key: channel name          → "Cyan", etc.
 
 const MODE_CAPTIONS = {
-  refColors: "Reference colors",
-  sampleColors: "Sample colors",
+  refColors: "✿ Dataset A colors",
+  sampleColors: "◆ Dataset B colors",
   deltaE: "ΔE heatmap",
   deltaLab: "ΔLab encoded difference",
   index: "Index channel values",
   inkChannels: "Pure ink channels",
-  refRepeat: "Reference repeatability",
-  sampleRepeat: "Sample repeatability",
+  refRepeat: "✿ Dataset A repeatability",
+  sampleRepeat: "◆ Dataset B repeatability",
 };
 
 
@@ -204,7 +204,7 @@ if (clearRefButton) {
 
     // Clear chart + stats + labels
     chartContainer.innerHTML = "";
-    modeLabel.textContent = "Waiting for reference chart…";
+    modeLabel.textContent = "Waiting for Dataset A…";
     summaryEl.textContent = "";
 
     if (statsPanel) {
@@ -213,7 +213,7 @@ if (clearRefButton) {
           ΔE00 statistics
         </div>
         <div class="text-[11px] text-slate-300">
-          Load a reference and sample chart to see statistics.
+          Load Dataset A and Dataset B to see statistics.
         </div>
       `;
     }
@@ -530,7 +530,7 @@ function updateView() {
   chartContainer.innerHTML = "";
 
   if (!refPatches) {
-    modeLabel.textContent = "Waiting for reference chart…";
+    modeLabel.textContent = "Waiting for Dataset A…";
     summaryEl.textContent = "";
     return;
   }
@@ -572,12 +572,12 @@ function updateView() {
             ΔE00 statistics
           </div>
           <div class="text-[11px] text-slate-300">
-            Sample loaded, but no common patch IDs between reference and sample.
+            Dataset B loaded, but no common patch IDs between Dataset A and Dataset B.
           </div>
         `;
       }
 
-      summaryEl.textContent = "Sample loaded, but no common patch IDs.";
+      summaryEl.textContent = "Dataset B loaded, but no common patch IDs.";
     } else {
       deltaValues.sort((a, b) => a - b);
       const n = deltaValues.length;
@@ -647,7 +647,7 @@ function updateView() {
           ΔE00 statistics
         </div>
         <div class="text-[11px] text-slate-300">
-          Load a sample chart to see comparison statistics.
+          Load Dataset B to see comparison statistics.
         </div>
       `;
     }
@@ -688,7 +688,7 @@ function updateView() {
       if (statsPanel) {
         statsPanel.innerHTML = `
           <div class="font-semibold text-slate-100 mb-1 text-xs">
-            Ref repeatability (ΔE00 vs mean)
+            ✿ Dataset A repeatability (ΔE00 vs mean)
           </div>
           <table class="w-full text-[11px] text-slate-100 border-collapse">
             <tbody>
@@ -721,10 +721,10 @@ function updateView() {
       if (statsPanel) {
         statsPanel.innerHTML = `
           <div class="font-semibold text-slate-100 mb-1 text-xs">
-            Ref repeatability (ΔE00 vs mean)
+            ✿ Dataset A repeatability (ΔE00 vs mean)
           </div>
           <div class="text-[11px] text-slate-300">
-            No repeatability data: only 1 reference file or no multi-file patches.
+            No repeatability data: only 1 Dataset A file or no multi-file patches.
           </div>
         `;
       }
@@ -759,7 +759,7 @@ function updateView() {
       if (statsPanel) {
         statsPanel.innerHTML = `
           <div class="font-semibold text-slate-100 mb-1 text-xs">
-            Sample repeatability (ΔE00 vs mean)
+            ◆ Dataset B repeatability (ΔE00 vs mean)
           </div>
           <table class="w-full text-[11px] text-slate-100 border-collapse">
             <tbody>
@@ -792,10 +792,10 @@ function updateView() {
       if (statsPanel) {
         statsPanel.innerHTML = `
           <div class="font-semibold text-slate-100 mb-1 text-xs">
-            Sample repeatability (ΔE00 vs mean)
+            ◆ Dataset B repeatability (ΔE00 vs mean)
           </div>
           <div class="text-[11px] text-slate-300">
-            No repeatability data: only 1 sample file or no multi-file patches.
+            No repeatability data: only 1 Dataset B file or no multi-file patches.
           </div>
         `;
       }
@@ -884,69 +884,69 @@ function updateView() {
 
   // Mode label + summary
   if (!hasSample) {
-    modeLabel.textContent = "Color (reference chart)";
-    summaryEl.textContent = `Patches: ${patchCount} · Reference files: ${refCount} · No sample loaded`;
+    modeLabel.textContent = "Color (Dataset A)";
+    summaryEl.textContent = `Patches: ${patchCount} · A files: ${refCount} · No Dataset B loaded`;
       if (modeLegend) {
       modeLegend.textContent =
-        "Each patch shows the reference L*a*b* color. Load a sample chart to enable comparison modes.";
+        "Each patch shows the Dataset A L*a*b* color. Load Dataset B to enable comparison modes.";
       }
   } else if (showDelta) {
-    modeLabel.textContent = "ΔE2000 heatmap (reference vs sample)";
-    summaryEl.textContent = `ΔE heatmap · Ref files: ${refCount} · Sample files: ${sampleCount}`;
+    modeLabel.textContent = "ΔE2000 heatmap (A vs B)";
+    summaryEl.textContent = `ΔE heatmap · A files: ${refCount} · B files: ${sampleCount}`;
       if (modeLegend) {
       modeLegend.textContent =
         "Patch color and number show ΔE00 between reference and sample (0 ≈ perfect match, 1–2 ≈ slight, 3+ clearly visible).";
       }
   } else if (showDeltaLab) {
-    modeLabel.textContent = "ΔLab encoded as Lab→RGB (sample − reference)";
-    summaryEl.textContent = `ΔLab mode · L' = ΔL + 70; a' = Δa × 20; b' = Δb × 20 · Ref files: ${refCount} · Sample files: ${sampleCount}`;
+    modeLabel.textContent = "ΔLab encoded as Lab→RGB (B − A)";
+    summaryEl.textContent = `ΔLab mode · L' = ΔL + 70; a' = Δa × 20; b' = Δb × 20 · A files: ${refCount} · B files: ${sampleCount}`;
       if (modeLegend) {
         modeLegend.textContent =
           "Colors encode ΔL, Δa, Δb as a pseudo-Lab; use this to see direction of the color shift, not just the magnitude.";
       }
   } else if (showSampleColor) {
-    modeLabel.textContent = "Sample colors";
-    summaryEl.textContent = `Showing averaged sample colors (text = sample ID) · Ref files: ${refCount} · Sample files: ${sampleCount}`;
+    modeLabel.textContent = "◆ Dataset B colors";
+    summaryEl.textContent = `Showing averaged Dataset B colors · A files: ${refCount} · B files: ${sampleCount}`;
         if (modeLegend) {
           modeLegend.textContent =
-            "Each patch shows the sample L*a*b* color. Use ΔE or ΔLab view to see differences vs reference.";
+            "Each patch shows the Dataset B L*a*b* color. Use ΔE or ΔLab view to see differences vs Dataset A.";
         }
   } else if (showIndexValues) {
     modeLabel.textContent = "Index values";
     const which = selectedIndexField ? `Channel: ${selectedIndexField}` : "No index channel available";
-    summaryEl.textContent = `${which} · Ref files: ${refCount} · Sample files: ${sampleCount}`;
+    summaryEl.textContent = `${which} · A files: ${refCount} · B files: ${sampleCount}`;
       if (modeLegend) {
         modeLegend.textContent =
           "Colors show the ink/channel value (0–100%) for the selected index; select the channel above to change the view.";
       }
   } else if (showInkChannels) {
-    const inkDs = (inkChannelsDataset === "sample" && hasSample) ? "sample" : "reference";
+    const inkDs = (inkChannelsDataset === "sample" && hasSample) ? "Dataset B" : "Dataset A";
     modeLabel.textContent = "Pure ink channel patches";
-    summaryEl.textContent = `Showing ${inkDs} color · pure single-channel patches highlighted · Ref files: ${refCount}${hasSample ? ` · Sample files: ${sampleCount}` : ""}`;
+    summaryEl.textContent = `Showing ${inkDs} color · pure single-channel patches highlighted · A files: ${refCount}${hasSample ? ` · B files: ${sampleCount}` : ""}`;
       if (modeLegend) {
         modeLegend.textContent =
-          "Shows only patches with a single non-zero ink channel; all others dimmed. Toggle Ref/Smp above to compare datasets.";
+          "Shows only patches with a single non-zero ink channel; all others dimmed. Toggle A/B above to compare datasets.";
       }
   } else if (showRefRepeat) {
-    modeLabel.textContent = "Repeatability heatmap (reference)";
-    summaryEl.textContent = `ΔE00 vs mean per patch · Reference files: ${refCount}`;
+    modeLabel.textContent = "✿ Dataset A repeatability heatmap";
+    summaryEl.textContent = `ΔE00 vs mean per patch · A files: ${refCount}`;
       if (modeLegend) {
         modeLegend.textContent =
-          "Patch color shows repeatability of the reference set (ΔE00 vs mean) – high values indicate unstable patches.";
+          "Patch color shows repeatability of Dataset A (ΔE00 vs mean) – high values indicate unstable patches.";
       }
   } else if (showSampleRepeat) {
-    modeLabel.textContent = "Repeatability heatmap (sample)";
-    summaryEl.textContent = `ΔE00 vs mean per patch · Sample files: ${sampleCount}`;
+    modeLabel.textContent = "◆ Dataset B repeatability heatmap";
+    summaryEl.textContent = `ΔE00 vs mean per patch · B files: ${sampleCount}`;
         if (modeLegend) {
           modeLegend.textContent =
-            "Patch color shows repeatability of the sample set (ΔE00 vs mean) – high values indicate unstable patches.";
+            "Patch color shows repeatability of Dataset B (ΔE00 vs mean) – high values indicate unstable patches.";
         }
   } else {
-    modeLabel.textContent = "Color (reference chart)";
-    summaryEl.textContent = `Reference colors · Ref files: ${refCount} · Sample files: ${sampleCount}`;
+    modeLabel.textContent = "Color (Dataset A)";
+    summaryEl.textContent = `Dataset A colors · A files: ${refCount} · B files: ${sampleCount}`;
         if (modeLegend) {
           modeLegend.textContent =
-            "Showing reference L*a*b* colors. Use the buttons above to switch between comparison and analysis modes.";
+            "Showing Dataset A L*a*b* colors. Use the buttons above to switch between comparison and analysis modes.";
         }
   }
 
@@ -959,10 +959,10 @@ function updateView() {
         if (heatmapLegendLabel) heatmapLegendLabel.textContent = "ΔE00";
       } else if (showRefRepeat) {
         heatmapLegend.classList.remove("hidden");
-        if (heatmapLegendLabel) heatmapLegendLabel.textContent = "Repeatability ΔE00 (reference set)";
+        if (heatmapLegendLabel) heatmapLegendLabel.textContent = "Repeatability ΔE00 (Dataset A)";
       } else if (showSampleRepeat) {
         heatmapLegend.classList.remove("hidden");
-        if (heatmapLegendLabel) heatmapLegendLabel.textContent = "Repeatability ΔE00 (sample set)";
+        if (heatmapLegendLabel) heatmapLegendLabel.textContent = "Repeatability ΔE00 (Dataset B)";
       }
     }
   }
@@ -1643,7 +1643,7 @@ function handlePatchClick(id) {
         <div class="text-[10px] text-slate-400 mb-0.5">${ch}</div>
         ${refVal != null ? `
           <div class="flex items-center gap-1.5 mb-0.5">
-            <span class="text-[9px] text-slate-500 w-6 shrink-0">Ref</span>
+            <span class="text-[9px] text-slate-500 w-6 shrink-0">A</span>
             <div class="flex-1 h-1.5 bg-slate-800 rounded overflow-hidden">
               <div class="h-full rounded" style="width:${refWidth}%;background:${refBarColor};opacity:0.65;"></div>
             </div>
@@ -1652,7 +1652,7 @@ function handlePatchClick(id) {
         ` : ""}
         ${smpVal != null ? `
           <div class="flex items-center gap-1.5">
-            <span class="text-[9px] text-slate-500 w-6 shrink-0">Smp</span>
+            <span class="text-[9px] text-slate-500 w-6 shrink-0">B</span>
             <div class="flex-1 h-1.5 bg-slate-800 rounded overflow-hidden">
               <div class="h-full rounded" style="width:${smpWidth}%;background:${smpBarColor};"></div>
             </div>
@@ -1720,11 +1720,11 @@ function handlePatchClick(id) {
       <div class="flex flex-col items-center gap-2">
         <div class="flex flex-col items-center gap-0.5">
           <div class="w-20 h-32 rounded border border-slate-600" style="background:${refCss};"></div>
-          <div class="text-[9px] text-slate-400">Reference</div>
+          <div class="text-[9px] text-slate-400">✿ Dataset A</div>
         </div>
         <div class="flex flex-col items-center gap-0.5">
           <div class="w-20 h-32 rounded border border-slate-600" style="background:${sampleCss};"></div>
-          <div class="text-[9px] text-slate-400">Sample</div>
+          <div class="text-[9px] text-slate-400">◆ Dataset B</div>
         </div>
       </div>
 
@@ -1741,8 +1741,8 @@ function handlePatchClick(id) {
           <thead>
             <tr class="text-slate-500 border-b border-slate-700">
               <th class="text-left pb-0.5 font-medium"></th>
-              <th class="text-right pb-0.5 font-medium">Ref</th>
-              <th class="text-right pb-0.5 font-medium">Sample</th>
+              <th class="text-right pb-0.5 font-medium">✿ A</th>
+              <th class="text-right pb-0.5 font-medium">◆ B</th>
               <th class="text-right pb-0.5 font-medium">Δ</th>
             </tr>
           </thead>
@@ -1797,8 +1797,8 @@ function handlePatchClick(id) {
             <thead>
               <tr class="text-slate-500 border-b border-slate-700">
                 <th class="text-left pb-0.5 font-medium"></th>
-                <th class="text-right pb-0.5 font-medium">Ref ${refRep && refRep.count > 1 ? "(N=" + refRep.count + ")" : "(N=1)"}</th>
-                <th class="text-right pb-0.5 font-medium">Smp ${sampleRep && sampleRep.count > 1 ? "(N=" + sampleRep.count + ")" : samplePatches ? "(N=1)" : "–"}</th>
+                <th class="text-right pb-0.5 font-medium">✿ A ${refRep && refRep.count > 1 ? "(N=" + refRep.count + ")" : "(N=1)"}</th>
+                <th class="text-right pb-0.5 font-medium">◆ B ${sampleRep && sampleRep.count > 1 ? "(N=" + sampleRep.count + ")" : samplePatches ? "(N=1)" : "–"}</th>
                 <th class="text-right pb-0.5 font-medium"></th>
               </tr>
             </thead>
@@ -3169,7 +3169,7 @@ function initGraphDatasetToggles() {
     const wrap = document.createElement("div");
     wrap.className = "graph-dataset-toggle";
 
-    [["ref", "Ref"], ["sample", "Smp"], ["both", "R+S"]].forEach(([mode, label]) => {
+    [["ref", "✿ A"], ["sample", "◆ B"], ["both", "A+B"]].forEach(([mode, label]) => {
       const btn = document.createElement("button");
       btn.textContent = label;
       btn.dataset.mode = mode;
@@ -3317,7 +3317,7 @@ function renderBullseyePlot(graphId, xKey, yKey, xLabel, yLabel, title, highligh
   if (!inner) return;
 
   if (!refPatches || !samplePatches) {
-    inner.innerHTML = `<div class="text-slate-500 text-xs italic p-2">Load reference &amp; sample chart to see scatter plot.</div>`;
+    inner.innerHTML = `<div class="text-slate-500 text-xs italic p-2">Load Dataset A &amp; Dataset B to see scatter plot.</div>`;
     return;
   }
 
@@ -3487,7 +3487,7 @@ function renderGraph1(deltaMap, highlightId = null) {
   if (!deltaMap) {
     inner.innerHTML =
       `<div class="text-slate-500 text-xs italic p-2">
-         Load a reference &amp; sample chart to see ΔE distribution.
+         Load Dataset A &amp; Dataset B to see ΔE distribution.
        </div>`;
     return;
   }
@@ -3702,7 +3702,7 @@ function renderGraph5(highlightId = null) {
   if (!showRef && !showSample) {
     inner.innerHTML = `<div class="text-slate-500 text-xs italic p-2">${
       !hasRef && !hasSample ? "Load a chart to see the a*b* gamut." :
-      mode === "sample"     ? "Load a sample chart." : "Load a reference chart."
+      mode === "sample"     ? "Load Dataset B." : "Load Dataset A."
     }</div>`;
     return;
   }

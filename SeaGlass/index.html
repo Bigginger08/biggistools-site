@@ -209,22 +209,22 @@
 
           <!-- REF file -->
           <div id="refFileGroup" class="flex items-center gap-1.5">
-            <span class="text-[14px] font-stretch-condensed font-semibold text-slate-400 uppercase tracking-wider shrink-0">Reference</span>
+            <span class="text-[14px] font-stretch-condensed font-semibold text-slate-400 uppercase tracking-wider shrink-0">✿ Dataset A</span>
             <label for="refFile" class="py-0.5 px-2.5 rounded text-[11px] font-semibold bg-emerald-700 text-white cursor-pointer hover:bg-emerald-600 shrink-0">Choose files</label>
             <input id="refFile" type="file" multiple accept=".txt,.cgats,.cie,.dat" class="sr-only" />
             <span id="refFilesList" class="text-[10px] text-slate-400 truncate max-w-[250px]"></span>
-            <button id="clearRefButton" type="button" class="text-slate-500 hover:text-slate-200 text-xs leading-none shrink-0" title="Clear reference">✕</button>
+            <button id="clearRefButton" type="button" class="text-slate-500 hover:text-slate-200 text-xs leading-none shrink-0" title="Clear Dataset A">✕</button>
           </div>
 
           <div class="w-px h-5 bg-slate-700 self-center shrink-0"></div>
 
           <!-- SMP file -->
           <div id="smpFileGroup" class="flex items-center gap-1.5">
-            <span class="text-[14px] font-stretch-condensed font-semibold text-slate-400 uppercase tracking-wider shrink-0">Sample</span>
+            <span class="text-[14px] font-stretch-condensed font-semibold text-slate-400 uppercase tracking-wider shrink-0">◆ Dataset B</span>
             <label for="sampleFile" class="py-0.5 px-2.5 rounded text-[11px] font-semibold bg-emerald-700 text-white cursor-pointer hover:bg-emerald-600 shrink-0">Choose files</label>
             <input id="sampleFile" type="file" multiple accept=".txt,.cgats,.cie,.dat" class="sr-only" />
             <span id="sampleFilesList" class="text-[10px] text-slate-400 truncate max-w-[250px]"></span>
-            <button id="clearSampleButton" type="button" class="text-slate-500 hover:text-slate-200 text-xs leading-none shrink-0" title="Clear sample">✕</button>
+            <button id="clearSampleButton" type="button" class="text-slate-500 hover:text-slate-200 text-xs leading-none shrink-0" title="Clear Dataset B">✕</button>
           </div>
 
         </div>
@@ -258,10 +258,10 @@
             <!-- View mode icon buttons -->
             <div id="viewModeControls" class="flex items-center gap-1">
               <button type="button" class="view-mode-btn mode-icon-btn w-8 h-8 rounded-lg border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform" data-mode="refColors">
-                <img src="/SeaGlass/assets/icon_Reference.png" alt="Reference colors" class="max-w-[70%] max-h-[70%]" />
+                <img src="/SeaGlass/assets/icon_Reference.png" alt="Dataset A colors" class="max-w-[70%] max-h-[70%]" />
               </button>
               <button type="button" class="view-mode-btn mode-icon-btn w-8 h-8 rounded-lg border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform" data-mode="sampleColors">
-                <img src="/SeaGlass/assets/icon_Sample.png" alt="Sample colors" class="max-w-[70%] max-h-[70%]" />
+                <img src="/SeaGlass/assets/icon_Sample.png" alt="Dataset B colors" class="max-w-[70%] max-h-[70%]" />
               </button>
               <button type="button" class="view-mode-btn mode-icon-btn w-8 h-8 rounded-lg border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform" data-mode="deltaE">
                 <img src="/SeaGlass/assets/icon_DeltaE.png" alt="ΔE heatmap" class="max-w-[70%] max-h-[70%]" />
@@ -276,10 +276,10 @@
                 <img src="/SeaGlass/assets/icon_Inks.png" alt="Pure ink channels" class="max-w-[70%] max-h-[70%]" />
               </button>
               <button type="button" class="view-mode-btn mode-icon-btn w-8 h-8 rounded-lg border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform" data-mode="refRepeat">
-                <img src="/SeaGlass/assets/icon_ReferenceRepeatability.png" alt="Reference repeatability" class="max-w-[70%] max-h-[70%]" />
+                <img src="/SeaGlass/assets/icon_ReferenceRepeatability.png" alt="Dataset A repeatability" class="max-w-[70%] max-h-[70%]" />
               </button>
               <button type="button" class="view-mode-btn mode-icon-btn w-8 h-8 rounded-lg border border-slate-600 bg-slate-800/80 flex items-center justify-center hover:bg-slate-700/80 transition-transform" data-mode="sampleRepeat">
-                <img src="/SeaGlass/assets/icon_SampleRepeatability.png" alt="Sample repeatability" class="max-w-[70%] max-h-[70%]" />
+                <img src="/SeaGlass/assets/icon_SampleRepeatability.png" alt="Dataset B repeatability" class="max-w-[70%] max-h-[70%]" />
               </button>
             </div>
 
@@ -287,8 +287,8 @@
             <div id="inkChannelsControls" class="hidden flex-row items-center gap-1">
               <div class="w-px h-4 bg-slate-700 self-center mx-0.5 shrink-0"></div>
               <div class="flex rounded overflow-hidden border border-slate-600 text-[10px]">
-                <button id="inkChannelsBtnRef" class="px-2 py-0.5 font-medium bg-emerald-700/70 text-emerald-100">Ref</button>
-                <button id="inkChannelsBtnSmp" class="px-2 py-0.5 bg-slate-700 text-slate-300">Smp</button>
+                <button id="inkChannelsBtnRef" class="px-2 py-0.5 font-medium bg-emerald-700/70 text-emerald-100">A</button>
+                <button id="inkChannelsBtnSmp" class="px-2 py-0.5 bg-slate-700 text-slate-300">B</button>
               </div>
             </div>
 
@@ -310,7 +310,7 @@
 
           <div class="flex items-center gap-2 text-xs min-w-0">
             <span class="text-slate-400 shrink-0">Mode:</span>
-            <span id="modeLabel" class="font-semibold text-emerald-400 shrink-0">Color (reference chart)</span>
+            <span id="modeLabel" class="font-semibold text-emerald-400 shrink-0">Color (Dataset A)</span>
             <span id="summary" class="text-slate-400 truncate"></span>
           </div>
 
@@ -344,7 +344,7 @@
         <!-- ΔE statistics panel — right column -->
         <div id="statsPanel" class="w-[220px] shrink-0 text-xs text-slate-200 border border-slate-700 bg-slate-900/60 rounded-lg p-2">
           <div class="font-semibold text-slate-100 mb-1 text-xs">ΔE00 statistics</div>
-          <div class="text-[11px] text-slate-300">Load a reference and sample chart to see statistics.</div>
+          <div class="text-[11px] text-slate-300">Load Dataset A and Dataset B to see statistics.</div>
         </div>
 
       </div><!-- end headerControls -->
