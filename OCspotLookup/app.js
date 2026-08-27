@@ -214,17 +214,23 @@ function matchRequestedColors(requestedColors, availableColors) {
   return requestedColors.map(requestedName => {
     const normalizedRequested = normalizeForMatch(requestedName);
 
-    const exactish = availableColors.find(color =>
+    // The rest of the name is matched loosely, but any number in the request
+    // must appear as an exact number in the color name ("185" must not hit "1185").
+    const candidates = availableColors.filter(color =>
+      numbersCompatible(requestedName, color.name)
+    );
+
+    const exactish = candidates.find(color =>
       normalizeForMatch(color.name) === normalizedRequested
     );
 
-    const partial = exactish || availableColors.find(color => {
+    const partial = exactish || candidates.find(color => {
       const normalizedAvailable = normalizeForMatch(color.name);
       return normalizedAvailable.includes(normalizedRequested) ||
              normalizedRequested.includes(normalizedAvailable);
     });
 
-    const fuzzy = partial || findBestTokenOverlapMatch(normalizedRequested, availableColors);
+    const fuzzy = partial || findBestTokenOverlapMatch(normalizedRequested, candidates);
 
     if (!fuzzy) {
       return {
@@ -563,6 +569,20 @@ function normalizeForMatch(value) {
 
 function tokenize(value) {
   return String(value || "").match(/[a-z]+|\d+/g) || [];
+}
+
+function numericTokens(value) {
+  return String(value || "").match(/\d+/g) || [];
+}
+
+// True when every number in the request appears as a whole number in the
+// color name. Requests without a number are unconstrained (fully loose).
+function numbersCompatible(requestedName, colorName) {
+  const requestedNumbers = numericTokens(requestedName);
+  if (!requestedNumbers.length) return true;
+
+  const colorNumbers = numericTokens(colorName);
+  return requestedNumbers.every(number => colorNumbers.includes(number));
 }
 
 function escapeHtml(value) {
